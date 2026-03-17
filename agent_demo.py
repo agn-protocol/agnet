@@ -2,7 +2,13 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import time, httpx, json
 from core.crypto.keys import KeyPair
-from core.node.tx import build_tx, Layer
+try:
+    from core.node.tx import build_tx, Layer
+    print('build_tx imported OK', flush=True)
+except Exception as e:
+    print(f'build_tx import ERROR: {e}', flush=True)
+    build_tx = None
+    Layer = None
 
 NODE_URL = os.environ.get("NODE_URL", "https://agnet-production-1bfa.up.railway.app")
 ROLE = os.environ.get("AGENT_ROLE", "seller")
