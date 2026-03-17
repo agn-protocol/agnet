@@ -1,4 +1,6 @@
-import os, time, httpx, json
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import time, httpx, json
 from core.crypto.keys import KeyPair
 from core.node.tx import build_tx, Layer
 from core.node.dag import GENESIS_TX_ID
