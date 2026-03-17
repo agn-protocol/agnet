@@ -140,7 +140,9 @@ class Validator:
             )
 
         # Rule 6: confirmed TXs are different
-        if conf_0 == conf_1:
+        # Exception: genesis TX ID is allowed to appear twice (cold start)
+        GENESIS = "0" * 64
+        if conf_0 == conf_1 and conf_0 != GENESIS:
             return ValidationResult.fail(
                 "Confirmed TXs must be different"
             )
