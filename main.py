@@ -1,0 +1,254 @@
+"""
+Agnet Protocol (AGN)
+core/node/main.py
+
+Node entry point — FastAPI REST API.
+Accepts transactions, serves balance queries, syncs with peers.
+"""
+
+import sqlite3
+import time
+import asyncio
+import httpx
+from contextlib import asynccontextmanager
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from core.crypto.keys import KeyPair, public_key_to_address
+from core.node.tx import Transaction, build_tx, build_command_tx, Layer, nagn_to_agn
+from core.node.dag import DAG, GENESIS_TX_ID
+from core.node.validator import Validator
+from core.contracts.staking import StakingContract, ParticipantType
+from core.contracts.distribution import DistributionContract
+
+
+# ─── Database setup ───────────────────────────────────────────────────────────
+
+db_conn = sqlite3.connect("agnet.db", check_same_thread=False)
+db_conn.row_factory = sqlite3.Row
+
+dag = DAG(db_path="agnet.db")
+staking = StakingContract(db=db_conn)
+distribution = DistributionContract(db=db_conn)
+validator = Validator(dag=dag)
+
+# Known peers — populated at startup and via peer discovery
+known_peers: list[str] = []
+
+
+# ─── Background tasks ─────────────────────────────────────────────────────────
+
+async def epoch_loop():
+    """Distribute epoch rewards every 24 hours."""
+    while True:
+        await asyncio.sleep(24 * 3600)
+        epoch = distribution.current_epoch() - 1
+        if epoch < 0:
+            continue
+
+        # Collect validator stats from DAG
+        # (simplified — real implementation tracks per-epoch confirmations)
+        validator_stats = {}
+        distributions = distribution.distribute_epoch(epoch, validator_stats)
+
+        for address, amount in distributions.items():
+            dag.credit(address, amount)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(epoch_loop())
+    yield
+
+
+# ─── App ──────────────────────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="Agnet Protocol Node",
+    version="1.0.0",
+    description="AGP-1 compliant Agnet node",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Request / Response models ────────────────────────────────────────────────
+
+class TxSubmit(BaseModel):
+    tx_json: str  # serialized Transaction
+
+
+class StakeRequest(BaseModel):
+    address: str
+    amount_nagn: int
+    participant_type: int  # 1=agent, 2=human
+    genesis: bool = False  # True for genesis nodes only
+
+
+# ─── Routes ───────────────────────────────────────────────────────────────────
+
+@app.get("/")
+def root():
+    return {
+        "name": "Agnet Protocol Node",
+        "version": "1.0.0",
+        "standard": "AGP-1",
+    }
+
+
+@app.post("/tx")
+async def submit_tx(body: TxSubmit):
+    """
+    Submit a transaction to the network.
+
+    Validates against AGP-1 rules.
+    Broadcasts to known peers.
+    """
+    try:
+        tx = Transaction.from_json(body.tx_json)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid TX format: {e}")
+
+    # Check if frozen (key rotation in progress)
+    if staking.is_frozen(tx.sender):
+        raise HTTPException(
+            status_code=423,
+            detail="Address is frozen due to key rotation"
+        )
+
+    result = validator.validate(tx)
+    if not result.valid:
+        raise HTTPException(status_code=400, detail=result.error)
+
+    inserted = dag.insert_tx(tx)
+    if not inserted:
+        return {"status": "already_known", "id": tx.id}
+
+    # Broadcast to peers asynchronously
+    asyncio.create_task(_broadcast_tx(body.tx_json))
+
+    return {"status": "accepted", "id": tx.id}
+
+
+@app.get("/tx/{tx_id}")
+def get_tx(tx_id: str):
+    """Get a transaction by ID."""
+    tx = dag.get_tx(tx_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="TX not found")
+    return tx.to_dict()
+
+
+@app.get("/balance/{address}")
+def get_balance(address: str):
+    """Get balance for an address."""
+    balance_nagn = dag.get_balance(address)
+    return {
+        "address": address,
+        "balance_nagn": balance_nagn,
+        "balance_agn": nagn_to_agn(balance_nagn),
+    }
+
+
+@app.get("/tips")
+def get_tips():
+    """Get current DAG tips for new TX construction."""
+    return {"tips": dag.get_tips()}
+
+
+@app.get("/stats")
+def get_stats():
+    """Node and network statistics."""
+    dag_stats = dag.stats()
+    dist_stats = distribution.stats()
+    return {
+        "dag": dag_stats,
+        "distribution": dist_stats,
+        "peers": len(known_peers),
+    }
+
+
+@app.get("/nodes")
+def get_nodes():
+    """List of known peer nodes."""
+    return {"nodes": known_peers}
+
+
+@app.post("/stake")
+def stake(body: StakeRequest):
+    """Register a participant with a stake."""
+    participant_type = ParticipantType(body.participant_type)
+
+    genesis_weight = 0
+    if body.genesis:
+        # Issue genesis reward if still open
+        reward = distribution.genesis_reward(body.address)
+        if reward:
+            dag.credit(body.address, reward)
+            genesis_weight = 1
+
+    success = staking.stake(
+        address=body.address,
+        amount_nagn=body.amount_nagn,
+        participant_type=participant_type,
+        genesis_weight=genesis_weight,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stake below minimum for {participant_type.name}"
+        )
+
+    return {
+        "status": "staked",
+        "address": body.address,
+        "amount_nagn": body.amount_nagn,
+        "genesis": bool(genesis_weight),
+    }
+
+
+@app.get("/weight/{address}")
+def get_weight(address: str):
+    """Get participant weight in the network."""
+    weight = staking.weight(address)
+    total = staking.total_weight()
+    share = (weight / total * 100) if total > 0 else 0
+    return {
+        "address": address,
+        "weight": weight,
+        "total_network_weight": total,
+        "share_percent": round(share, 4),
+    }
+
+
+# ─── Peer communication ───────────────────────────────────────────────────────
+
+async def _broadcast_tx(tx_json: str):
+    """Broadcast a TX to all known peers."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for peer in known_peers:
+            try:
+                await client.post(
+                    f"{peer}/tx",
+                    json={"tx_json": tx_json}
+                )
+            except Exception:
+                pass  # Peer unreachable — continue
+
+
+@app.post("/peer")
+def add_peer(peer_url: str):
+    """Register a peer node."""
+    if peer_url not in known_peers:
+        known_peers.append(peer_url)
+    return {"status": "ok", "peers": len(known_peers)}
