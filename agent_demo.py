@@ -35,16 +35,27 @@ def balance(addr):
     except:
         return 0.0
 
-def tips(exclude_sender=None):
+def tips(sender_address=None):
+    GENESIS = "0" * 64
     try:
         data = httpx.get(f"{NODE_URL}/tips", timeout=5).json()["tips"]
-        if exclude_sender:
-            data = [t for t in data if t != "0"*64]
-        if len(data) < 2:
-            data = ["0"*64, "0"*64]
+        if sender_address:
+            filtered = []
+            for tip in data:
+                if tip == GENESIS:
+                    continue
+                try:
+                    tip_sender = httpx.get(f"{NODE_URL}/tx/{tip}", timeout=3).json().get("sender", "")
+                    if tip_sender != sender_address:
+                        filtered.append(tip)
+                except:
+                    filtered.append(tip)
+            data = filtered
+        while len(data) < 2:
+            data.append(GENESIS)
         return tuple(data[:2])
     except:
-        return ("0" * 64, "0" * 64)
+        return (GENESIS, GENESIS)
 
 def send(kp, to, amount, memo, nonce):
     tx = build_tx(sender_public_key=kp.public_hex, receiver=to,
