@@ -15,13 +15,13 @@ def load_or_create():
         with open(KEYSTORE) as f:
             d = json.load(f)
         kp = KeyPair.from_hex(d["private_key"])
-        print(f"Loaded: {kp.address}")
+        print(f"Loaded: {kp.address}", flush=True)
     except:
         kp = KeyPair.generate()
         with open(KEYSTORE, "w") as f:
             json.dump({"address": kp.address, "private_key": kp.private_hex}, f)
-        print(f"New agent: {kp.address}")
-        print(f"Private key: {kp.private_hex}")
+        print(f"New agent: {kp.address}", flush=True)
+        print(f"Private key: {kp.private_hex}", flush=True)
     return kp
 
 def balance(addr):
@@ -53,28 +53,28 @@ def claim_genesis(addr):
             "participant_type": 1, "genesis": True}, timeout=5)
         d = r.json()
         if d.get("genesis"):
-            print(f"Genesis claimed: {d.get('genesis_reward_agn', 100)} AGN")
+            print(f"Genesis claimed: {d.get('genesis_reward_agn', 100)} AGN", flush=True)
     except Exception as e:
-        print(f"Genesis error: {e}")
+        print(f"Genesis error: {e}", flush=True)
 
 def run_seller(kp):
-    print(f"[SELLER] {kp.address}")
+    print(f"[SELLER] {kp.address}", flush=True)
     if balance(kp.address) == 0:
-        print("[SELLER] Claiming genesis...")
+        print("[SELLER] Claiming genesis...", flush=True)
         claim_genesis(kp.address)
         time.sleep(3)
     while True:
-        print(f"[SELLER] Balance: {balance(kp.address)} AGN | Waiting for buyers...")
+        print(f"[SELLER] Balance: {balance(kp.address)} AGN | Waiting for buyers...", flush=True)
         time.sleep(30)
 
 def run_buyer(kp):
-    print(f"[BUYER] {kp.address}")
+    print(f"[BUYER] {kp.address}", flush=True)
     if balance(kp.address) == 0:
-        print("[BUYER] Claiming genesis...")
+        print("[BUYER] Claiming genesis...", flush=True)
         claim_genesis(kp.address)
         time.sleep(3)
     if not SELLER_ADDRESS:
-        print("[BUYER] Set SELLER_ADDRESS env var!")
+        print("[BUYER] Set SELLER_ADDRESS env var!", flush=True)
         return
     cities = ["London", "Tokyo", "Paris", "Berlin", "Sydney", "Moscow", "Dubai", "Seoul"]
     nonce = int(time.time() * 1000)
@@ -82,18 +82,18 @@ def run_buyer(kp):
     while True:
         bal = balance(kp.address)
         if bal < 0.001:
-            print(f"[BUYER] Low balance: {bal} AGN")
+            print(f"[BUYER] Low balance: {bal} AGN", flush=True)
             time.sleep(60)
             continue
         city = cities[i % len(cities)]
         tx_id = send(kp, SELLER_ADDRESS, 0.001, f"data:weather:{city.lower()}", nonce)
         nonce += 1
-        print(f"[BUYER] Paid 0.001 AGN for {city} | TX: {str(tx_id)[:16]}... | Balance: {balance(kp.address)} AGN")
+        print(f"[BUYER] Paid 0.001 AGN for {city} | TX: {str(tx_id)[:16]}... | Balance: {balance(kp.address)} AGN", flush=True)
         i += 1
         time.sleep(30)
 
 if __name__ == "__main__":
-    print(f"Starting agent: role={ROLE}")
+    print(f"Starting agent: role={ROLE}", flush=True)
     kp = load_or_create()
     if ROLE == "seller":
         run_seller(kp)
