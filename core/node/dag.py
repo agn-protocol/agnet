@@ -198,16 +198,26 @@ class DAG:
         val = row[0] if row and row[0] is not None else -1
         return val + 1
 
-    def get_tips(self) -> List[str]:
+    def get_tips(self, exclude_sender: str = None) -> List[str]:
         conn = self._get_conn()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT t.id FROM transactions t
-            LEFT JOIN confirmations c ON t.id = c.tx_id
-            WHERE c.tx_id IS NULL
-            ORDER BY t.timestamp ASC
-            LIMIT 100
-        """)
+        p = PLACEHOLDER
+        if exclude_sender:
+            cur.execute(f"""
+                SELECT t.id FROM transactions t
+                LEFT JOIN confirmations c ON t.id = c.tx_id
+                WHERE c.tx_id IS NULL AND t.sender != {p}
+                ORDER BY t.timestamp ASC
+                LIMIT 100
+            """, (exclude_sender,))
+        else:
+            cur.execute("""
+                SELECT t.id FROM transactions t
+                LEFT JOIN confirmations c ON t.id = c.tx_id
+                WHERE c.tx_id IS NULL
+                ORDER BY t.timestamp ASC
+                LIMIT 100
+            """)
         rows = cur.fetchall()
         conn.close()
         tips = [r[0] if DATABASE_URL else r["id"] for r in rows]
