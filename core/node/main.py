@@ -69,9 +69,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Agnet Protocol Node",
     version="1.0.0",
-    description="**Autonomous Payment Network for AI Agents**
-
-[GitHub](https://github.com/agn-protocol/agnet) | [Whitepaper](https://github.com/agn-protocol/agnet/raw/main/Whitepaper.pdf)",
+    description="AGP-1 compliant Agnet node",
     lifespan=lifespan,
 )
 
