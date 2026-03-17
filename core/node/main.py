@@ -6,6 +6,7 @@ Node entry point — FastAPI REST API.
 Accepts transactions, serves balance queries, syncs with peers.
 """
 
+import os
 import time
 import asyncio
 import httpx
@@ -226,6 +227,34 @@ def get_weight(address: str):
         "total_network_weight": total,
         "share_percent": round(share, 4),
     }
+
+
+@app.get("/txs", summary="Recent transactions")
+def get_txs(limit: int = 20):
+    """Get recent transactions from the network."""
+    p = "%s" if os.environ.get("DATABASE_URL") else "?"
+    conn = dag._get_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT * FROM transactions ORDER BY timestamp DESC LIMIT {p}", (min(limit, 100),))
+    rows = cur.fetchall()
+    conn.close()
+    keys = ["id", "sender", "receiver", "amount", "timestamp", "nonce",
+            "confirm_0", "confirm_1", "layer", "memo", "signature", "version", "created_at"]
+    result = []
+    for row in rows:
+        r = dict(zip(keys, row)) if os.environ.get("DATABASE_URL") else dict(row)
+        result.append({
+            "id": r["id"][:16] + "...",
+            "id_full": r["id"],
+            "sender": r["sender"][:20] + "...",
+            "receiver": r["receiver"][:20] + "...",
+            "amount_agn": r["amount"] / 1_000_000,
+            "amount_nagn": r["amount"],
+            "timestamp": r["timestamp"],
+            "layer": r["layer"],
+            "memo": r["memo"],
+        })
+    return {"txs": result, "count": len(result)}
 
 
 @app.get("/network", summary="Full network overview")
