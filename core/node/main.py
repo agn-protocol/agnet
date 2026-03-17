@@ -229,6 +229,17 @@ def get_weight(address: str):
     }
 
 
+@app.get("/debug/db")
+def debug_db():
+    """Check which database is being used."""
+    db_url = os.environ.get("DATABASE_URL")
+    return {
+        "database": "postgresql" if db_url else "sqlite",
+        "database_url_set": bool(db_url),
+        "database_url_preview": db_url[:20] + "..." if db_url else None,
+    }
+
+
 @app.get("/txs", summary="Recent transactions")
 def get_txs(limit: int = 20):
     """Get recent transactions from the network."""
