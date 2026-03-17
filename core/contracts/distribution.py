@@ -3,255 +3,169 @@ Agnet Protocol (AGN)
 core/contracts/distribution.py
 
 AGP-1-DC — Distribution Contract.
-Manages AGN emission, node rewards, halving, and genesis.
-Immutable after deployment — all nodes run identical logic.
+PostgreSQL + SQLite auto-switch via DATABASE_URL.
 """
 
+import os
 import time
-import sqlite3
-from typing import Dict, List, Optional
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# Total supply — fixed forever
-TOTAL_SUPPLY_NAGN = 1_000_000_000 * 1_000_000  # 1B AGN in nAGN
+if DATABASE_URL:
+    import psycopg2
+    def get_conn():
+        return psycopg2.connect(DATABASE_URL)
+    P = "%s"
+else:
+    import sqlite3
+    def get_conn():
+        conn = sqlite3.connect("agnet.db", check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+    P = "?"
 
-# Base reward per epoch (first epoch)
-BASE_REWARD_NAGN = 50 * 1_000_000  # 50 AGN in nAGN
-
-# One epoch = 24 hours
+TOTAL_SUPPLY_NAGN = 1_000_000_000 * 1_000_000
+BASE_REWARD_NAGN = 50 * 1_000_000
 EPOCH_DURATION_SECONDS = 24 * 3600
-
-# Halving every 4 years
-HALVING_INTERVAL_EPOCHS = 365 * 4  # epochs (days)
-
-# Genesis parameters
-GENESIS_REWARD_NAGN = 100 * 1_000_000  # 100 AGN per genesis node
+HALVING_INTERVAL_EPOCHS = 365 * 4
+GENESIS_REWARD_NAGN = 100 * 1_000_000
 GENESIS_MAX_NODES = 100
 
 
 class DistributionContract:
-    """
-    AGP-1-DC — Distribution Contract.
-
-    All AGN comes from this contract.
-    No manual distribution. No special pools.
-    Work = reward.
-    """
-
-    def __init__(self, db: sqlite3.Connection):
-        self.db = db
+    def __init__(self, db=None):
         self._init_schema()
 
     def _init_schema(self):
-        self.db.executescript("""
-            CREATE TABLE IF NOT EXISTS distribution_state (
-                key     TEXT PRIMARY KEY,
-                value   TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS epoch_rewards (
-                epoch       INTEGER PRIMARY KEY,
-                reward      INTEGER NOT NULL,
+        conn = get_conn()
+        cur = conn.cursor()
+        if DATABASE_URL:
+            cur.execute("""CREATE TABLE IF NOT EXISTS distribution_state (
+                key TEXT PRIMARY KEY, value TEXT NOT NULL)""")
+            cur.execute("""CREATE TABLE IF NOT EXISTS epoch_rewards (
+                epoch BIGINT PRIMARY KEY, reward BIGINT NOT NULL,
                 distributed INTEGER NOT NULL DEFAULT 0,
-                epoch_start INTEGER NOT NULL,
-                epoch_end   INTEGER
-            );
+                epoch_start BIGINT NOT NULL, epoch_end BIGINT)""")
+            cur.execute("""CREATE TABLE IF NOT EXISTS genesis_nodes (
+                address TEXT PRIMARY KEY, rewarded_at BIGINT NOT NULL)""")
+        else:
+            cur.executescript("""
+                CREATE TABLE IF NOT EXISTS distribution_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS epoch_rewards (epoch INTEGER PRIMARY KEY, reward INTEGER NOT NULL, distributed INTEGER NOT NULL DEFAULT 0, epoch_start INTEGER NOT NULL, epoch_end INTEGER);
+                CREATE TABLE IF NOT EXISTS genesis_nodes (address TEXT PRIMARY KEY, rewarded_at INTEGER NOT NULL);
+            """)
+        conn.commit()
+        self._ensure_state(conn)
+        conn.close()
 
-            CREATE TABLE IF NOT EXISTS genesis_nodes (
-                address     TEXT PRIMARY KEY,
-                rewarded_at INTEGER NOT NULL
-            );
-        """)
+    def _ensure_state(self, conn):
+        cur = conn.cursor()
+        for key, val in [("total_distributed", "0"), ("genesis_count", "0"), ("launch_time", str(int(time.time())))]:
+            cur.execute(f"INSERT INTO distribution_state (key, value) VALUES ({P},{P}) ON CONFLICT(key) DO NOTHING", (key, val))
+        conn.commit()
 
-        # Initialize state if not exists
-        self._set_state("total_distributed", "0")
-        self._set_state("genesis_count", "0")
-        self._set_state("launch_time", str(int(time.time())))
+    def _get_state(self, key):
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(f"SELECT value FROM distribution_state WHERE key={P}", (key,))
+        row = cur.fetchone()
+        conn.close()
+        return row[0] if row else "0"
 
-        self.db.commit()
+    def _set_state(self, key, value):
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(f"INSERT INTO distribution_state (key,value) VALUES ({P},{P}) ON CONFLICT(key) DO UPDATE SET value={P}", (key, value, value))
+        conn.commit()
+        conn.close()
 
-    # ─── Genesis ──────────────────────────────────────────────────────
-
-    def genesis_reward(self, address: str) -> Optional[int]:
-        """
-        Issue genesis reward to one of the first GENESIS_MAX_NODES nodes.
-
-        Args:
-            address: node address connecting for the first time
-
-        Returns:
-            Amount issued in nAGN, or None if genesis is closed
-        """
+    def genesis_reward(self, address):
         genesis_count = int(self._get_state("genesis_count"))
-
         if genesis_count >= GENESIS_MAX_NODES:
-            return None  # genesis closed
-
-        # Check not already rewarded
-        existing = self.db.execute(
-            "SELECT 1 FROM genesis_nodes WHERE address = ?", (address,)
-        ).fetchone()
-        if existing:
             return None
-
-        # Check total supply
-        total_distributed = int(self._get_state("total_distributed"))
-        if total_distributed + GENESIS_REWARD_NAGN > TOTAL_SUPPLY_NAGN:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(f"SELECT 1 FROM genesis_nodes WHERE address={P}", (address,))
+        if cur.fetchone():
+            conn.close()
             return None
-
+        total = int(self._get_state("total_distributed"))
+        if total + GENESIS_REWARD_NAGN > TOTAL_SUPPLY_NAGN:
+            conn.close()
+            return None
         now = int(time.time())
-        self.db.execute(
-            "INSERT INTO genesis_nodes (address, rewarded_at) VALUES (?, ?)",
-            (address, now)
-        )
+        cur.execute(f"INSERT INTO genesis_nodes (address, rewarded_at) VALUES ({P},{P}) ON CONFLICT DO NOTHING", (address, now))
+        conn.commit()
+        conn.close()
         self._set_state("genesis_count", str(genesis_count + 1))
-        self._set_state(
-            "total_distributed",
-            str(total_distributed + GENESIS_REWARD_NAGN)
-        )
-        self.db.commit()
+        self._set_state("total_distributed", str(total + GENESIS_REWARD_NAGN))
         return GENESIS_REWARD_NAGN
 
-    def genesis_open(self) -> bool:
-        """Check if genesis is still accepting new nodes."""
+    def genesis_open(self):
         return int(self._get_state("genesis_count")) < GENESIS_MAX_NODES
 
-    def genesis_count(self) -> int:
-        """How many genesis nodes have been rewarded."""
+    def genesis_count(self):
         return int(self._get_state("genesis_count"))
 
-    # ─── Epoch rewards ────────────────────────────────────────────────
-
-    def current_epoch(self) -> int:
-        """
-        Calculate current epoch number based on launch time.
-        One epoch = 24 hours.
-        """
+    def current_epoch(self):
         launch_time = int(self._get_state("launch_time"))
-        elapsed = int(time.time()) - launch_time
-        return elapsed // EPOCH_DURATION_SECONDS
+        return (int(time.time()) - launch_time) // EPOCH_DURATION_SECONDS
 
-    def epoch_reward(self, epoch: int) -> int:
-        """
-        Calculate reward for a given epoch.
-
-        Halving every HALVING_INTERVAL_EPOCHS epochs.
-        BASE_REWARD >> halvings (right shift = divide by 2).
-        """
+    def epoch_reward(self, epoch):
         halvings = epoch // HALVING_INTERVAL_EPOCHS
-        reward = BASE_REWARD_NAGN >> halvings
-        return max(reward, 1)  # minimum 1 nAGN per epoch
+        return max(BASE_REWARD_NAGN >> halvings, 1)
 
-    def distribute_epoch(
-        self,
-        epoch: int,
-        validator_stats: Dict[str, int]
-    ) -> Dict[str, int]:
-        """
-        Distribute rewards for a completed epoch.
-
-        Args:
-            epoch: epoch number
-            validator_stats: {address: confirmed_tx_count}
-                             addresses of validators and their TX counts
-
-        Returns:
-            {address: amount_nagn} — amounts distributed to each validator
-        """
-        # Check epoch not already distributed
-        existing = self.db.execute(
-            "SELECT distributed FROM epoch_rewards WHERE epoch = ?", (epoch,)
-        ).fetchone()
-        if existing and existing["distributed"]:
+    def distribute_epoch(self, epoch, validator_stats):
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(f"SELECT distributed FROM epoch_rewards WHERE epoch={P}", (epoch,))
+        row = cur.fetchone()
+        conn.close()
+        if row and (row[0] if DATABASE_URL else row["distributed"]):
             return {}
-
         if not validator_stats:
             return {}
-
         reward = self.epoch_reward(epoch)
-        total_distributed = int(self._get_state("total_distributed"))
-
-        # Check supply cap
-        if total_distributed + reward > TOTAL_SUPPLY_NAGN:
-            reward = TOTAL_SUPPLY_NAGN - total_distributed
+        total = int(self._get_state("total_distributed"))
+        if total + reward > TOTAL_SUPPLY_NAGN:
+            reward = TOTAL_SUPPLY_NAGN - total
         if reward <= 0:
             return {}
-
-        # Distribute proportionally by TX count
         total_tx = sum(validator_stats.values())
         if total_tx == 0:
             return {}
-
-        distributions: Dict[str, int] = {}
+        distributions = {}
         remaining = reward
-
-        sorted_validators = sorted(
-            validator_stats.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
-
-        for i, (address, tx_count) in enumerate(sorted_validators):
-            if i == len(sorted_validators) - 1:
-                # Last validator gets the remainder (avoid rounding loss)
-                share = remaining
-            else:
-                share = int(reward * tx_count / total_tx)
-
+        items = sorted(validator_stats.items(), key=lambda x: x[1], reverse=True)
+        for i, (addr, tx_count) in enumerate(items):
+            share = remaining if i == len(items) - 1 else int(reward * tx_count / total_tx)
             if share > 0:
-                distributions[address] = share
+                distributions[addr] = share
                 remaining -= share
-
-        # Record epoch
         now = int(time.time())
-        self.db.execute("""
-            INSERT INTO epoch_rewards (epoch, reward, distributed, epoch_start, epoch_end)
-            VALUES (?, ?, 1, ?, ?)
-            ON CONFLICT(epoch) DO UPDATE SET distributed = 1, epoch_end = ?
-        """, (epoch, reward, now - EPOCH_DURATION_SECONDS, now, now))
-
-        # Update total distributed
-        total_issued = sum(distributions.values())
-        self._set_state(
-            "total_distributed",
-            str(total_distributed + total_issued)
-        )
-        self.db.commit()
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO epoch_rewards (epoch,reward,distributed,epoch_start,epoch_end) VALUES ({P},{P},1,{P},{P}) ON CONFLICT(epoch) DO UPDATE SET distributed=1,epoch_end={P}",
+            (epoch, reward, now - EPOCH_DURATION_SECONDS, now, now))
+        conn.commit()
+        conn.close()
+        self._set_state("total_distributed", str(total + sum(distributions.values())))
         return distributions
 
-    # ─── Stats ────────────────────────────────────────────────────────
-
-    def total_distributed(self) -> int:
-        """Total AGN distributed so far in nAGN."""
+    def total_distributed(self):
         return int(self._get_state("total_distributed"))
 
-    def remaining_supply(self) -> int:
-        """Remaining AGN to be distributed in nAGN."""
+    def remaining_supply(self):
         return TOTAL_SUPPLY_NAGN - self.total_distributed()
 
-    def stats(self) -> dict:
-        """Distribution statistics."""
-        epoch = self.current_epoch()
+    def stats(self):
         return {
-            "total_supply_nagn": TOTAL_SUPPLY_NAGN,
+            "current_epoch": self.current_epoch(),
+            "epoch_reward_nagn": self.epoch_reward(self.current_epoch()),
             "total_distributed_nagn": self.total_distributed(),
-            "remaining_nagn": self.remaining_supply(),
-            "current_epoch": epoch,
-            "epoch_reward_nagn": self.epoch_reward(epoch),
+            "remaining_supply_nagn": self.remaining_supply(),
             "genesis_open": self.genesis_open(),
             "genesis_count": self.genesis_count(),
+            "genesis_max": GENESIS_MAX_NODES,
         }
-
-    # ─── Internal ─────────────────────────────────────────────────────
-
-    def _get_state(self, key: str) -> str:
-        row = self.db.execute(
-            "SELECT value FROM distribution_state WHERE key = ?", (key,)
-        ).fetchone()
-        return row["value"] if row else "0"
-
-    def _set_state(self, key: str, value: str) -> None:
-        self.db.execute("""
-            INSERT INTO distribution_state (key, value) VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = ?
-        """, (key, value, value))
