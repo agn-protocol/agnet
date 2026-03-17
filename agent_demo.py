@@ -44,6 +44,7 @@ def send(kp, to, amount, memo, nonce):
         r = httpx.post(f"{NODE_URL}/tx", json={"tx_json": tx.to_json()}, timeout=5)
         return r.json().get("id", "error")
     except Exception as e:
+        print(f"TX error: {e}", flush=True)
         return str(e)
 
 def claim_genesis(addr):
