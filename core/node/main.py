@@ -209,7 +209,8 @@ def stake(body: StakeRequest):
         "status": "staked",
         "address": body.address,
         "amount_nagn": body.amount_nagn,
-        "genesis": bool(genesis_weight),
+        "genesis": body.genesis,
+        "genesis_reward_agn": 100 if body.genesis else 0,
     }
 
 
