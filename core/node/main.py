@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Agnet Protocol Node",
     version="1.0.0",
-    description="""Autonomous Payment Network for AI Agents\n\n[GitHub](https://github.com/agn-protocol/agnet) | [Whitepaper](https://github.com/agn-protocol/agnet/raw/main/Whitepaper.pdf)""",
+    description="""Autonomous Payment Network for AI Agents\n\n[Explorer & Wallet](https://agn-protocol.github.io/agnet/explorer/) | [GitHub](https://github.com/agn-protocol/agnet) | [Whitepaper](https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf)\n\n**Network:** 0 fee | DAG | AGP-1 | Genesis open""",
     lifespan=lifespan,
 )
 
@@ -225,6 +225,41 @@ def get_weight(address: str):
         "weight": weight,
         "total_network_weight": total,
         "share_percent": round(share, 4),
+    }
+
+
+@app.get("/network", summary="Full network overview")
+def network_overview():
+    dag_stats = dag.stats()
+    dist_stats = distribution.stats()
+    claimed = dist_stats["genesis_count"]
+    return {
+        "nodes": {
+            "total": len(known_peers) + 1,
+            "peers": known_peers,
+            "genesis_claimed": claimed,
+            "genesis_remaining": 100 - claimed,
+        },
+        "wallets": {
+            "active_addresses": dag_stats["active_addresses"],
+        },
+        "transactions": {
+            "total": dag_stats["tx_count"],
+            "tips": dag_stats["tips"],
+        },
+        "token": {
+            "total_supply_agn": 1_000_000_000,
+            "distributed_agn": dist_stats["total_distributed_nagn"] / 1_000_000,
+            "remaining_agn": dist_stats["remaining_supply_nagn"] / 1_000_000,
+            "epoch": dist_stats["current_epoch"],
+            "epoch_reward_agn": dist_stats["epoch_reward_nagn"] / 1_000_000,
+        },
+        "links": {
+            "explorer": "https://agn-protocol.github.io/agnet/explorer/",
+            "api_docs": "https://agnet-production-1bfa.up.railway.app/docs",
+            "github": "https://github.com/agn-protocol/agnet",
+            "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/agnet-whitepaper.pdf",
+        },
     }
 
 
