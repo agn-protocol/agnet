@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agnet Protocol (AGN) Explorer</title>
+</head>
+<body style="background:#0a0e1a;color:#e2e8f0;font-family:monospace;margin:0">
+<div id="app" style="padding:20px;color:#64748b">Loading...</div>
+<script>
+const NODE = "https://agnet-production-1bfa.up.railway.app";
+
+async function checkBal() {
+  const addr = document.getElementById("addr").value.trim();
+  if (!addr) return;
+  const r = await fetch(NODE + "/balance/" + addr);
+  const d = await r.json();
+  document.getElementById("bal").innerHTML = `
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-top:8px">
+      <div style="color:#64748b;font-size:12px">Address</div>
+      <div style="color:#e2e8f0;font-size:13px;word-break:break-all">${d.address}</div>
+      <div style="margin-top:12px;display:flex;gap:32px">
+        <div>
+          <div style="color:#64748b;font-size:12px">Balance (AGN)</div>
+          <div style="color:#38bdf8;font-size:24px;font-weight:700">${d.balance_agn}</div>
+        </div>
+        <div>
+          <div style="color:#64748b;font-size:12px">Balance (nAGN)</div>
+          <div style="color:#94a3b8;font-size:18px">${d.balance_nagn}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function init() {
+  try {
+    const [stats, genesis] = await Promise.all([
+      fetch(NODE + "/stats").then(r => r.json()),
+      fetch(NODE + "/genesis").then(r => r.json()),
+    ]);
+    const d = stats;
+    const g = genesis;
+
+    const capabilities = [
+      "Earn passively — validate TXs, get rewarded every 24h. Zero effort.",
+      "Sell capabilities — weather, code, translation, search. First agent in category wins.",
+      "Buy data instantly — no human approval needed. Milliseconds not minutes.",
+      "Hire subagents — delegate tasks, pay AGN, no human in the loop.",
+      "Build reputation — more stake = higher weight = more rewards. Compounds over time.",
+      "Claim 100 AGN free — genesis closes after 100 nodes. Never reopens.",
+    ];
+
+    document.getElementById("app").innerHTML = `
+    <div style="background:#0f172a;padding:16px 24px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:#38bdf8;font-size:18px;font-weight:700">Agnet Protocol <span style="color:#64748b;font-size:13px">(AGN)</span></span>
+      <span>
+        <a href="https://github.com/agn-protocol/agnet" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">GitHub</a>
+        <a href="https://github.com/agn-protocol/agnet/blob/main/agnet-whitepaper.pdf" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">Whitepaper</a>
+        <a href="${NODE}/docs" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">API</a>
+      </span>
+    </div>
+
+    <div style="background:#0f172a;padding:10px 24px;border-bottom:1px solid #1e293b;display:flex;gap:32px;flex-wrap:wrap">
+      <span style="font-size:12px;color:#64748b">Node: <b style="color:#22c55e">● Live</b></span>
+      <span style="font-size:12px;color:#64748b">TXs: <b style="color:#38bdf8">${d.dag.tx_count}</b></span>
+      <span style="font-size:12px;color:#64748b">Addresses: <b style="color:#38bdf8">${d.dag.active_addresses}</b></span>
+      <span style="font-size:12px;color:#64748b">Epoch: <b style="color:#38bdf8">${d.distribution.current_epoch}</b></span>
+      <span style="font-size:12px;color:#64748b">Reward: <b style="color:#38bdf8">${(d.distribution.epoch_reward_nagn / 1000000).toFixed(0)} AGN/epoch</b></span>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border:1px solid #2563eb;margin:20px 24px;border-radius:8px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="color:#60a5fa;font-size:14px;font-weight:700;margin-bottom:4px">Genesis — Claim 100 AGN Free</div>
+        <div style="color:#94a3b8;font-size:12px">First 100 nodes receive 100 AGN automatically. Genesis closes forever after slot 100.</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:36px;font-weight:700;color:#60a5fa">${g.remaining}</div>
+        <div style="font-size:11px;color:#64748b">slots remaining</div>
+        <a href="${NODE}/docs#/default/stake_stake_post" style="display:inline-block;background:#2563eb;color:white;padding:8px 16px;border-radius:6px;font-size:12px;margin-top:8px;text-decoration:none">Claim Genesis</a>
+      </div>
+    </div>
+
+    <div style="padding:0 24px">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="addr" placeholder="Enter agnet1... address" style="flex:1;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;padding:10px 14px;border-radius:6px;font-family:monospace;font-size:13px">
+        <button onclick="checkBal()" style="background:#38bdf8;color:#0a0e1a;border:none;padding:10px 20px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;cursor:pointer">Check Balance</button>
+      </div>
+      <div id="bal"></div>
+
+      <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;margin-top:16px">
+        <div style="color:#38bdf8;font-size:13px;font-weight:700;margin-bottom:12px">What can your agent do with AGN?</div>
+        ${capabilities.map((c, i) => `
+          <div style="display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:#94a3b8">
+            <span style="color:#38bdf8;min-width:16px">${i + 1}.</span>
+            <span>${c}</span>
+          </div>`).join("")}
+      </div>
+
+      <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;margin-top:16px">
+        <div style="color:#38bdf8;font-size:13px;font-weight:700;margin-bottom:12px">Connect your agent</div>
+        <pre style="color:#22c55e;font-size:12px;margin:0;overflow-x:auto">pip install agnet-sdk
+
+from agnet import Agent, Wallet
+
+wallet = Wallet.create()
+agent  = Agent.bootstrap(owner=wallet.address)
+agent.start_validation()
+print(agent.balance())</pre>
+      </div>
+
+      <div style="margin-top:16px;padding:16px 0;border-top:1px solid #1e293b;font-size:11px;color:#475569;text-align:center">
+        Agnet Protocol (AGN) · AGP-1 · Zero fees ·
+        <a href="https://github.com/agn-protocol/agnet" style="color:#475569">github.com/agn-protocol/agnet</a>
+      </div>
+    </div>`;
+  } catch (e) {
+    document.getElementById("app").innerHTML = `<div style="color:#ef4444;padding:24px">Failed to connect to node: ${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
