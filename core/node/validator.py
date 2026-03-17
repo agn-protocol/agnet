@@ -99,7 +99,9 @@ class Validator:
 
         # Rule 3: balance or command check
         if tx.tx_type == TxType.VALUE:
-            balance = self.dag.get_balance(tx.sender)
+            from core.crypto.keys import public_key_to_address, decode_key
+            sender_address = public_key_to_address(decode_key(tx.sender))
+            balance = self.dag.get_balance(sender_address)
             if balance < tx.amount:
                 return ValidationResult.fail(
                     f"Insufficient balance: have {balance} nAGN, need {tx.amount} nAGN"
