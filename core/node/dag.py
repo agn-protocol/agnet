@@ -49,7 +49,7 @@ class DAG:
                     receiver TEXT NOT NULL,
                     amount BIGINT NOT NULL,
                     timestamp BIGINT NOT NULL,
-                    nonce INTEGER NOT NULL,
+                    nonce BIGINT NOT NULL,
                     confirm_0 TEXT NOT NULL,
                     confirm_1 TEXT NOT NULL,
                     layer INTEGER NOT NULL,
@@ -71,7 +71,7 @@ class DAG:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS nonces (
                     address TEXT NOT NULL,
-                    nonce INTEGER NOT NULL,
+                    nonce BIGINT NOT NULL,
                     PRIMARY KEY (address, nonce)
                 )
             """)
