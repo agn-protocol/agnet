@@ -11,6 +11,7 @@ import time
 from typing import Optional, List
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+print(f"DAG using: {'postgresql' if DATABASE_URL else 'sqlite'} | URL set: {bool(DATABASE_URL)}", flush=True)
 
 if DATABASE_URL:
     import psycopg2
