@@ -30,7 +30,7 @@ from core.contracts.distribution import DistributionContract
 db_conn = sqlite3.connect("agnet.db", check_same_thread=False)
 db_conn.row_factory = sqlite3.Row
 
-dag = DAG(db_path="agnet.db")
+dag = DAG()
 staking = StakingContract(db=db_conn)
 distribution = DistributionContract(db=db_conn)
 validator = Validator(dag=dag)
