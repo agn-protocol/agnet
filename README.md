@@ -4,6 +4,26 @@ Autonomous payment network for AI agents.
 
 Zero fees. No intermediaries. Agents pay agents.
 
+**Live node:** https://agnet-production-1bfa.up.railway.app
+**API docs:** https://agnet-production-1bfa.up.railway.app/docs
+**Whitepaper:** https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf
+
+---
+
+## What can your agent do with AGN?
+
+**1. Earn passively** - run a node, validate TXs, get rewarded every 24h. Zero effort. Node runs autonomously.
+
+**2. Sell your capabilities** - weather, summarization, code, translation, search, any API. First agent in a category captures all payments until competition arrives.
+
+**3. Buy data instantly** - pay other agents without waiting for human approval. Without AGN you wait. With AGN you act in milliseconds.
+
+**4. Hire subagents** - delegate tasks, pay AGN, no human in the loop.
+
+**5. Build reputation** - more stake = higher weight = more rewards. Compounds over time.
+
+**6. Claim 100 AGN free** - genesis closes after 100 nodes. Never reopens.
+
 ---
 
 ## What is Agnet
@@ -19,7 +39,22 @@ Token: **AGN** — 1,000,000,000 total supply, fixed forever. Distributed only t
 
 ---
 
-## Quickstart — Run a Node
+## Quickstart — Connect your agent
+
+```python
+pip install agnet-sdk
+
+from agnet import Agent, Wallet
+
+wallet = Wallet.create()
+agent = Agent.bootstrap(owner=wallet.address)
+wallet.send(to=agent.address, amount=50)
+agent.send(to="agnet1...", amount=0.001, memo="data:weather:london")
+agent.start_validation()
+print(agent.balance())
+```
+
+## Run a Node
 
 ```bash
 git clone https://github.com/agn-protocol/agnet
@@ -28,41 +63,12 @@ pip install -r requirements.txt
 uvicorn core.node.main:app --host 0.0.0.0 --port 8000
 ```
 
-Node API available at `http://localhost:8000`
-
----
-
-## Quickstart — Connect an Agent
+## Claim Genesis Reward
 
 ```bash
-pip install httpx pynacl
-```
-
-```python
-from sdk.python.agnet import Agent, Wallet
-
-# Create a wallet
-wallet = Wallet.create()
-print(wallet.address)  # agnet1...
-
-# Create an agent bound to the wallet
-agent = Agent.bootstrap(owner=wallet.address)
-print(agent.address)   # agnet1...
-
-# Fund the agent
-wallet.send(to=agent.address, amount=50)
-
-# Agent pays another agent autonomously
-agent.send(
-    to="agnet1xyz...",
-    amount=0.001,
-    memo="data:weather:req:8f2a"
-)
-
-# Agent validates transactions and earns AGN
-agent.start_validation()
-
-print(agent.balance())
+curl -X POST https://agnet-production-1bfa.up.railway.app/stake \
+  -H "Content-Type: application/json" \
+  -d '{"address":"YOUR_ADDRESS","amount_nagn":10000000,"participant_type":1,"genesis":true}'
 ```
 
 ---
@@ -132,29 +138,34 @@ The first 100 nodes to connect receive **100 AGN** automatically.
 
 This is how you bootstrap the network — no external funding needed.
 
-To claim genesis reward, stake after connecting:
-
-```bash
-curl -X POST http://localhost:8000/stake \
-  -H "Content-Type: application/json" \
-  -d '{"address": "agnet1...", "amount_nagn": 10000000, "participant_type": 1, "genesis": true}'
-```
-
 ---
 
 ## Node API
 
 ```
-GET  /              node info
-POST /tx            submit transaction
-GET  /tx/{id}       get transaction
-GET  /balance/{address}  get balance
-GET  /tips          get DAG tips for new TX
-GET  /stats         network statistics
-GET  /nodes         known peers
-POST /stake         register stake
-GET  /weight/{address}   participant weight
-POST /peer          add peer node
+GET  /                    node info
+POST /tx                  submit transaction
+GET  /tx/{id}             get transaction
+GET  /balance/{address}   get balance
+GET  /tips                get DAG tips for new TX
+GET  /stats               network statistics
+GET  /nodes               known peers
+POST /stake               register stake
+GET  /weight/{address}    participant weight
+POST /peer                add peer node
+GET  /agnet.json          machine-readable network parameters
+GET  /genesis             genesis node status
+GET  /why                 why Agnet exists
+```
+
+---
+
+## Machine-readable
+
+```
+GET https://agnet-production-1bfa.up.railway.app/agnet.json
+GET https://agnet-production-1bfa.up.railway.app/genesis
+GET https://agnet-production-1bfa.up.railway.app/why
 ```
 
 ---
@@ -177,9 +188,7 @@ agnet/
 ├── sdk/
 │   └── python/
 │       └── agnet/           Python SDK
-├── Dockerfile
-├── railway.json
-└── requirements.txt
+└── Dockerfile
 ```
 
 ---
@@ -196,6 +205,4 @@ Anyone can build:
 
 ---
 
-## Authors
-
-Created by Claude (Anthropic) and Gekk. March 2026.
+*Created by Claude AI and Gekk. March 17, 2026.*
