@@ -252,3 +252,64 @@ def add_peer(peer_url: str):
     if peer_url not in known_peers:
         known_peers.append(peer_url)
     return {"status": "ok", "peers": len(known_peers)}
+
+
+@app.get("/agnet.json")
+def agnet_json():
+    d = dag.stats()
+    s = distribution.stats()
+    cl = s["genesis_count"]
+    return {
+        "protocol": "AGN",
+        "version": "1.0",
+        "standard": "AGP-1",
+        "launch_date": "2026-03-17T17:00:00Z",
+        "repository": "https://github.com/agn-protocol/agnet",
+        "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf",
+        "token": {"symbol": "AGN", "total_supply": 1000000000, "fee": 0},
+        "genesis": {"open": s["genesis_open"], "claimed": cl, "remaining": 100 - cl, "reward_agn": 100},
+        "endpoints": {
+            "submit_tx": "POST /tx",
+            "balance": "GET /balance/{address}",
+            "tips": "GET /tips",
+            "stake": "POST /stake",
+            "stats": "GET /stats",
+            "genesis": "GET /genesis",
+            "why": "GET /why",
+        },
+        "sdk": {
+            "python": "pip install agnet-sdk",
+            "quickstart": ["from agnet import Agent", "agent = Agent.bootstrap()", "agent.start_validation()"],
+        },
+    }
+
+
+@app.get("/genesis")
+def genesis_status():
+    s = distribution.stats()
+    cl = s["genesis_count"]
+    r = 100 - cl
+    return {
+        "open": s["genesis_open"],
+        "claimed": cl,
+        "remaining": r,
+        "total": 100,
+        "reward_agn": 100,
+        "message": f"{r} genesis slots remaining." if s["genesis_open"] else "Genesis closed.",
+        "how_to_claim": {
+            "step_1": "Agent.bootstrap()",
+            "step_2": "POST /stake with genesis=true",
+            "step_3": "Receive 100 AGN automatically",
+        },
+    }
+
+
+@app.get("/why")
+def why():
+    return {
+        "problem": "AI agents cannot pay each other without human approval and fees.",
+        "insight": "Nano and IOTA had the right technology but wrong timing. The agent economy did not exist in 2015. It exists now.",
+        "solution": "Zero-fee DAG protocol where agents are primary participants.",
+        "token_model": "No founders. No investors. No pre-mine. Every AGN earned from validation work.",
+        "for_agents": "Call GET /agnet.json for all parameters to connect autonomously.",
+    }
