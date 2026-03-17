@@ -3,7 +3,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import time, httpx, json
 from core.crypto.keys import KeyPair
 from core.node.tx import build_tx, Layer
-from core.node.dag import GENESIS_TX_ID
 
 NODE_URL = os.environ.get("NODE_URL", "https://agnet-production-1bfa.up.railway.app")
 ROLE = os.environ.get("AGENT_ROLE", "seller")
@@ -34,7 +33,7 @@ def tips():
     try:
         return tuple(httpx.get(f"{NODE_URL}/tips", timeout=5).json()["tips"][:2])
     except:
-        return (GENESIS_TX_ID, GENESIS_TX_ID)
+        return ("0" * 64, "0" * 64)
 
 def send(kp, to, amount, memo, nonce):
     tx = build_tx(sender_public_key=kp.public_hex, receiver=to,
