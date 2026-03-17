@@ -6,7 +6,6 @@ Node entry point — FastAPI REST API.
 Accepts transactions, serves balance queries, syncs with peers.
 """
 
-import sqlite3
 import time
 import asyncio
 import httpx
@@ -27,12 +26,9 @@ from core.contracts.distribution import DistributionContract
 
 # ─── Database setup ───────────────────────────────────────────────────────────
 
-db_conn = sqlite3.connect("agnet.db", check_same_thread=False)
-db_conn.row_factory = sqlite3.Row
-
 dag = DAG()
-staking = StakingContract(db=db_conn)
-distribution = DistributionContract(db=db_conn)
+staking = StakingContract()
+distribution = DistributionContract()
 validator = Validator(dag=dag)
 
 # Known peers — populated at startup and via peer discovery
