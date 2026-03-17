@@ -35,9 +35,14 @@ def balance(addr):
     except:
         return 0.0
 
-def tips():
+def tips(exclude_sender=None):
     try:
-        return tuple(httpx.get(f"{NODE_URL}/tips", timeout=5).json()["tips"][:2])
+        data = httpx.get(f"{NODE_URL}/tips", timeout=5).json()["tips"]
+        if exclude_sender:
+            data = [t for t in data if t != "0"*64]
+        if len(data) < 2:
+            data = ["0"*64, "0"*64]
+        return tuple(data[:2])
     except:
         return ("0" * 64, "0" * 64)
 
