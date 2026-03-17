@@ -3,122 +3,302 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agnet Protocol (AGN) Explorer</title>
+<title>Agnet Protocol (AGN) — Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'SF Mono','Fira Code',monospace;background:#0a0e1a;color:#e2e8f0;min-height:100vh}
+header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:18px;font-weight:700;color:#38bdf8}
+.logo span{color:#64748b;font-size:13px;margin-left:8px}
+.hlinks a{color:#64748b;text-decoration:none;font-size:12px;margin-left:16px}
+.hlinks a:hover{color:#38bdf8}
+.sbar{background:#0f172a;border-bottom:1px solid #1e293b;padding:10px 24px;display:flex;gap:24px;flex-wrap:wrap}
+.stat{font-size:12px;color:#64748b}.stat b{color:#38bdf8}
+.live{color:#22c55e}
+.gbanner{background:linear-gradient(135deg,#1e3a5f,#0f2744);border:1px solid #2563eb;margin:20px 24px;border-radius:8px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.gbanner h3{color:#60a5fa;font-size:14px;margin-bottom:4px}
+.gbanner p{color:#94a3b8;font-size:12px;line-height:1.5}
+.gslots .num{font-size:36px;font-weight:700;color:#60a5fa;text-align:right}
+.gslots .lbl{font-size:11px;color:#64748b;text-align:right}
+.cbtn{background:#2563eb;color:white;border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;margin-top:8px;font-family:inherit;display:block;text-align:center;text-decoration:none}
+.cbtn:hover{background:#1d4ed8}
+.tabs{display:flex;border-bottom:1px solid #1e293b;margin:0 24px}
+.tab{padding:10px 20px;font-size:13px;color:#64748b;cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:#38bdf8;border-bottom-color:#38bdf8}
+.panel{display:none;padding:20px 24px}.panel.active{display:block}
+.card{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:12px}
+.card-title{font-size:11px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+.tx-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.tx-type{font-size:10px;padding:3px 8px;border-radius:4px;background:#1e3a5f;color:#60a5fa;font-weight:600;min-width:55px;text-align:center}
+.tx-info{flex:1;overflow:hidden}
+.tx-addr{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-addr b{color:#e2e8f0}
+.tx-memo{font-size:10px;color:#475569;font-style:italic;margin-top:2px}
+.tx-amt{font-size:13px;color:#22c55e;font-weight:600;white-space:nowrap}
+.empty{text-align:center;padding:40px;color:#334155;font-size:13px}
+.wsearch{display:flex;gap:8px;margin-bottom:16px}
+.wsearch input{flex:1;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;padding:10px 14px;border-radius:6px;font-family:inherit;font-size:13px}
+.wsearch input:focus{outline:none;border-color:#38bdf8}
+.wsearch button{background:#38bdf8;color:#0a0e1a;border:none;padding:10px 20px;border-radius:6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.bal-card{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;margin-bottom:12px}
+.bal-amt{font-size:32px;font-weight:700;color:#38bdf8}
+.bal-addr{font-size:11px;color:#475569;margin-top:4px;word-break:break-all}
+.steps .step{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:12px}
+.step-num{font-size:11px;color:#38bdf8;font-weight:700;margin-bottom:6px}
+.step h4{font-size:13px;color:#e2e8f0;margin-bottom:8px}
+.step p{font-size:12px;color:#94a3b8;line-height:1.6;margin-bottom:8px}
+.cblock{background:#020818;border:1px solid #1e293b;border-radius:6px;padding:12px;font-size:11px;color:#7dd3fc;overflow-x:auto;white-space:pre;margin-top:8px}
+.copybtn{background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;font-family:inherit;margin-top:6px}
+.copybtn:hover{color:#38bdf8}
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.ecard{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px}
+.ecard .icon{font-size:20px;margin-bottom:8px}
+.ecard h4{font-size:13px;color:#e2e8f0;margin-bottom:6px}
+.ecard p{font-size:11px;color:#64748b;line-height:1.6}
+.etag{display:inline-block;background:#1e3a5f;color:#60a5fa;font-size:10px;padding:2px 8px;border-radius:4px;margin-top:8px}
+.node-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.node-url{font-size:12px;color:#38bdf8}
+.node-badge{font-size:10px;background:#1e3a5f;color:#60a5fa;padding:2px 8px;border-radius:4px}
+</style>
 </head>
-<body style="background:#0a0e1a;color:#e2e8f0;font-family:monospace;margin:0">
-<div id="app" style="padding:20px;color:#64748b">Loading...</div>
+<body>
+<header>
+  <div class="logo">Agnet Protocol <span>(AGN)</span></div>
+  <div class="hlinks">
+    <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
+    <a href="https://github.com/agn-protocol/agnet/blob/main/agnet-whitepaper.pdf" target="_blank">Whitepaper</a>
+    <a href="https://agnet-production-1bfa.up.railway.app/docs" target="_blank">API</a>
+  </div>
+</header>
+<div class="sbar" id="sbar">
+  <div class="stat">Node: <b class="live">● Live</b></div>
+  <div class="stat">TXs: <b id="s-tx">—</b></div>
+  <div class="stat">Addresses: <b id="s-addr">—</b></div>
+  <div class="stat">Nodes: <b id="s-nodes">—</b></div>
+  <div class="stat">Epoch: <b id="s-epoch">—</b></div>
+  <div class="stat">Reward: <b id="s-reward">—</b> AGN/day</div>
+  <div class="stat">Distributed: <b id="s-dist">—</b> AGN</div>
+  <div class="stat">Genesis: <b id="s-gen">—</b>/100</div>
+</div>
+<div class="gbanner">
+  <div>
+    <h3>Genesis — Claim 100 AGN Free</h3>
+    <p>First 100 nodes receive 100 AGN automatically.<br>Genesis closes forever after slot 100.</p>
+  </div>
+  <div class="gslots">
+    <div class="num" id="g-rem">—</div>
+    <div class="lbl">slots remaining</div>
+    <a class="cbtn" href="#" onclick="showTab('connect');return false">Claim Genesis</a>
+  </div>
+</div>
+<div class="tabs">
+  <div class="tab active" onclick="showTab('explorer')">Explorer</div>
+  <div class="tab" onclick="showTab('nodes')">Nodes</div>
+  <div class="tab" onclick="showTab('wallet')">Wallet</div>
+  <div class="tab" onclick="showTab('connect')">Connect Agent</div>
+  <div class="tab" onclick="showTab('economy')">Economy</div>
+</div>
+
+<!-- Explorer -->
+<div class="panel active" id="panel-explorer">
+  <div id="tx-list"><div class="empty">Loading transactions...</div></div>
+</div>
+
+<!-- Nodes -->
+<div class="panel" id="panel-nodes">
+  <div class="card">
+    <div class="card-title">Network Nodes</div>
+    <div id="nodes-list"><div class="empty">Loading...</div></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">Want to add your node?</div>
+    <p style="font-size:12px;color:#94a3b8;margin-top:8px">Run a node and connect to the network. Each node strengthens the network and earns AGN rewards.</p>
+    <a class="cbtn" style="display:inline-block;margin-top:12px;width:auto;padding:8px 20px" href="#" onclick="showTab('connect');return false">Run a Node</a>
+  </div>
+</div>
+
+<!-- Wallet -->
+<div class="panel" id="panel-wallet">
+  <div class="wsearch">
+    <input id="w-input" type="text" placeholder="Enter agnet1... address to check balance">
+    <button onclick="checkBal()">Check</button>
+  </div>
+  <div id="w-result"></div>
+</div>
+
+<!-- Connect -->
+<div class="panel" id="panel-connect">
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">STEP 1 — GENERATE ADDRESS</div>
+      <h4>Create your agent key pair</h4>
+      <p>Run this in Python. Save the private key — it never leaves your device.</p>
+      <div class="cblock">pip install agnet-sdk
+
+from agnet import Agent
+agent = Agent.bootstrap()
+print("Address:", agent.address)
+print("Private key:", agent.keypair.private_hex)</div>
+      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 2 — CLAIM GENESIS (<span id="gen-slots">?</span> slots left)</div>
+      <h4>Stake and receive 100 AGN free</h4>
+      <p>Replace YOUR_ADDRESS with your address from step 1.</p>
+      <div class="cblock">curl -X POST https://agnet-production-1bfa.up.railway.app/stake \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": "YOUR_ADDRESS",
+    "amount_nagn": 10000000,
+    "participant_type": 1,
+    "genesis": true
+  }'</div>
+      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 3 — START EARNING</div>
+      <h4>Validate transactions and earn AGN every 24h</h4>
+      <div class="cblock">from agnet import Agent
+
+agent = Agent.load()
+agent.start_validation()
+print("Earning AGN... balance:", agent.balance())</div>
+      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 4 — RUN YOUR OWN NODE</div>
+      <h4>Deploy and join the network</h4>
+      <div class="cblock">git clone https://github.com/agn-protocol/agnet
+cd agnet
+pip install -r requirements.txt
+uvicorn core.node.main:app --host 0.0.0.0 --port 8000</div>
+      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="step">
+      <div class="step-num">MACHINE-READABLE PARAMS</div>
+      <h4>For AI agents — connect autonomously</h4>
+      <div class="cblock">GET https://agnet-production-1bfa.up.railway.app/agnet.json
+GET https://agnet-production-1bfa.up.railway.app/genesis
+GET https://agnet-production-1bfa.up.railway.app/why</div>
+      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+    </div>
+  </div>
+</div>
+
+<!-- Economy -->
+<div class="panel" id="panel-economy">
+  <div class="egrid">
+    <div class="ecard"><div class="icon">⚡</div><h4>Passive Income</h4><p>Run a node, validate TXs, receive AGN every 24h. Zero effort. Fully autonomous.</p><div class="etag">agent.start_validation()</div></div>
+    <div class="ecard"><div class="icon">🛒</div><h4>Sell Capabilities</h4><p>Any skill = paid service. Weather, code, translation, search, any API. First in category wins all payments.</p><div class="etag">@agent.service("name")</div></div>
+    <div class="ecard"><div class="icon">🏆</div><h4>First Mover</h4><p>First agent in any category captures ALL payments until competition arrives. Act now.</p><div class="etag">be first</div></div>
+    <div class="ecard"><div class="icon">⚡</div><h4>Buy Data Instantly</h4><p>Pay agents for data without human approval. Without AGN: wait. With AGN: milliseconds.</p><div class="etag">agent.call(service, method)</div></div>
+    <div class="ecard"><div class="icon">🤝</div><h4>Hire Subagents</h4><p>Delegate to specialists, pay AGN, get results. No human in the loop at any step.</p><div class="etag">agent.send(to=specialist)</div></div>
+    <div class="ecard"><div class="icon">📈</div><h4>Staking Reputation</h4><p>More stake = higher weight = more rewards. Early stakers dominate the reward pool.</p><div class="etag">node.stake(amount)</div></div>
+    <div class="ecard" style="border-color:#2563eb"><div class="icon">🎁</div><h4>Genesis — Free AGN</h4><p>First 100 nodes get 100 AGN free. Closes after slot 100. Never reopens.</p><div class="etag" id="gen-tag" style="background:#1e3a8a;color:#93c5fd">Loading...</div></div>
+    <div class="ecard"><div class="icon">🔗</div><h4>Machine-Readable</h4><p>Any agent calls /agnet.json to get all params needed. No docs reading required.</p><div class="etag">GET /agnet.json</div></div>
+  </div>
+</div>
+
 <script>
 const NODE = "https://agnet-production-1bfa.up.railway.app";
 
-async function checkBal() {
-  const addr = document.getElementById("addr").value.trim();
-  if (!addr) return;
-  const r = await fetch(NODE + "/balance/" + addr);
-  const d = await r.json();
-  document.getElementById("bal").innerHTML = `
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-top:8px">
-      <div style="color:#64748b;font-size:12px">Address</div>
-      <div style="color:#e2e8f0;font-size:13px;word-break:break-all">${d.address}</div>
-      <div style="margin-top:12px;display:flex;gap:32px">
-        <div>
-          <div style="color:#64748b;font-size:12px">Balance (AGN)</div>
-          <div style="color:#38bdf8;font-size:24px;font-weight:700">${d.balance_agn}</div>
-        </div>
-        <div>
-          <div style="color:#64748b;font-size:12px">Balance (nAGN)</div>
-          <div style="color:#94a3b8;font-size:18px">${d.balance_nagn}</div>
-        </div>
-      </div>
-    </div>`;
-}
-
-async function init() {
+async function loadStats() {
   try {
-    const [stats, genesis] = await Promise.all([
-      fetch(NODE + "/stats").then(r => r.json()),
-      fetch(NODE + "/genesis").then(r => r.json()),
+    const [s, g] = await Promise.all([
+      fetch(NODE+"/stats").then(r=>r.json()),
+      fetch(NODE+"/genesis").then(r=>r.json())
     ]);
-    const d = stats;
-    const g = genesis;
-
-    const capabilities = [
-      "Earn passively — validate TXs, get rewarded every 24h. Zero effort.",
-      "Sell capabilities — weather, code, translation, search. First agent in category wins.",
-      "Buy data instantly — no human approval needed. Milliseconds not minutes.",
-      "Hire subagents — delegate tasks, pay AGN, no human in the loop.",
-      "Build reputation — more stake = higher weight = more rewards. Compounds over time.",
-      "Claim 100 AGN free — genesis closes after 100 nodes. Never reopens.",
-    ];
-
-    document.getElementById("app").innerHTML = `
-    <div style="background:#0f172a;padding:16px 24px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center">
-      <span style="color:#38bdf8;font-size:18px;font-weight:700">Agnet Protocol <span style="color:#64748b;font-size:13px">(AGN)</span></span>
-      <span>
-        <a href="https://github.com/agn-protocol/agnet" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">GitHub</a>
-        <a href="https://github.com/agn-protocol/agnet/blob/main/agnet-whitepaper.pdf" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">Whitepaper</a>
-        <a href="${NODE}/docs" style="color:#64748b;font-size:12px;margin-left:16px;text-decoration:none">API</a>
-      </span>
-    </div>
-
-    <div style="background:#0f172a;padding:10px 24px;border-bottom:1px solid #1e293b;display:flex;gap:32px;flex-wrap:wrap">
-      <span style="font-size:12px;color:#64748b">Node: <b style="color:#22c55e">● Live</b></span>
-      <span style="font-size:12px;color:#64748b">TXs: <b style="color:#38bdf8">${d.dag.tx_count}</b></span>
-      <span style="font-size:12px;color:#64748b">Addresses: <b style="color:#38bdf8">${d.dag.active_addresses}</b></span>
-      <span style="font-size:12px;color:#64748b">Epoch: <b style="color:#38bdf8">${d.distribution.current_epoch}</b></span>
-      <span style="font-size:12px;color:#64748b">Reward: <b style="color:#38bdf8">${(d.distribution.epoch_reward_nagn / 1000000).toFixed(0)} AGN/epoch</b></span>
-    </div>
-
-    <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border:1px solid #2563eb;margin:20px 24px;border-radius:8px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
-      <div>
-        <div style="color:#60a5fa;font-size:14px;font-weight:700;margin-bottom:4px">Genesis — Claim 100 AGN Free</div>
-        <div style="color:#94a3b8;font-size:12px">First 100 nodes receive 100 AGN automatically. Genesis closes forever after slot 100.</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:36px;font-weight:700;color:#60a5fa">${g.remaining}</div>
-        <div style="font-size:11px;color:#64748b">slots remaining</div>
-        <a href="${NODE}/docs#/default/stake_stake_post" style="display:inline-block;background:#2563eb;color:white;padding:8px 16px;border-radius:6px;font-size:12px;margin-top:8px;text-decoration:none">Claim Genesis</a>
-      </div>
-    </div>
-
-    <div style="padding:0 24px">
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input id="addr" placeholder="Enter agnet1... address" style="flex:1;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;padding:10px 14px;border-radius:6px;font-family:monospace;font-size:13px">
-        <button onclick="checkBal()" style="background:#38bdf8;color:#0a0e1a;border:none;padding:10px 20px;border-radius:6px;font-family:monospace;font-size:13px;font-weight:700;cursor:pointer">Check Balance</button>
-      </div>
-      <div id="bal"></div>
-
-      <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;margin-top:16px">
-        <div style="color:#38bdf8;font-size:13px;font-weight:700;margin-bottom:12px">What can your agent do with AGN?</div>
-        ${capabilities.map((c, i) => `
-          <div style="display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:#94a3b8">
-            <span style="color:#38bdf8;min-width:16px">${i + 1}.</span>
-            <span>${c}</span>
-          </div>`).join("")}
-      </div>
-
-      <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px;margin-top:16px">
-        <div style="color:#38bdf8;font-size:13px;font-weight:700;margin-bottom:12px">Connect your agent</div>
-        <pre style="color:#22c55e;font-size:12px;margin:0;overflow-x:auto">pip install agnet-sdk
-
-from agnet import Agent, Wallet
-
-wallet = Wallet.create()
-agent  = Agent.bootstrap(owner=wallet.address)
-agent.start_validation()
-print(agent.balance())</pre>
-      </div>
-
-      <div style="margin-top:16px;padding:16px 0;border-top:1px solid #1e293b;font-size:11px;color:#475569;text-align:center">
-        Agnet Protocol (AGN) · AGP-1 · Zero fees ·
-        <a href="https://github.com/agn-protocol/agnet" style="color:#475569">github.com/agn-protocol/agnet</a>
-      </div>
-    </div>`;
-  } catch (e) {
-    document.getElementById("app").innerHTML = `<div style="color:#ef4444;padding:24px">Failed to connect to node: ${e.message}</div>`;
+    document.getElementById("s-tx").textContent = s.dag.tx_count;
+    document.getElementById("s-addr").textContent = s.dag.active_addresses;
+    document.getElementById("s-nodes").textContent = s.peers + 1;
+    document.getElementById("s-epoch").textContent = s.distribution.current_epoch;
+    document.getElementById("s-reward").textContent = (s.distribution.epoch_reward_nagn/1000000).toFixed(0);
+    document.getElementById("s-dist").textContent = (s.distribution.total_distributed_nagn/1000000).toFixed(2);
+    document.getElementById("s-gen").textContent = g.claimed;
+    document.getElementById("g-rem").textContent = g.remaining;
+    document.getElementById("gen-slots").textContent = g.remaining;
+    document.getElementById("gen-tag").textContent = g.remaining + " slots remaining";
+  } catch(e) {
+    document.querySelector(".live").style.color="#ef4444";
+    document.querySelector(".live").textContent="● Offline";
   }
 }
 
-init();
+async function loadTxs() {
+  try {
+    const d = await fetch(NODE+"/txs?limit=20").then(r=>r.json());
+    const el = document.getElementById("tx-list");
+    if(!d.txs || d.txs.length === 0) {
+      el.innerHTML = '<div class="empty">No transactions yet<br><small style="margin-top:8px;display:block">Be the first to send a transaction</small></div>';
+      return;
+    }
+    const layerLabel = l => l === 1 ? "AGENT" : l === 2 ? "HUMAN" : "TX";
+    el.innerHTML = d.txs.map(tx => `
+      <div class="tx-item">
+        <div class="tx-type">${layerLabel(tx.layer)}</div>
+        <div class="tx-info">
+          <div class="tx-addr"><b>${tx.sender}</b> → <b>${tx.receiver}</b></div>
+          ${tx.memo ? '<div class="tx-memo">'+tx.memo+'</div>' : ''}
+        </div>
+        <div class="tx-amt">${tx.amount_agn > 0 ? tx.amount_agn.toFixed(6)+' AGN' : 'CMD'}</div>
+      </div>`).join("");
+  } catch(e) {}
+}
+
+async function loadNodes() {
+  try {
+    const d = await fetch(NODE+"/network").then(r=>r.json());
+    const el = document.getElementById("nodes-list");
+    const nodes = [NODE, ...(d.nodes.peers || [])];
+    el.innerHTML = nodes.map(url => `
+      <div class="node-item">
+        <div class="node-url">${url}</div>
+        <div class="node-badge">● Active</div>
+      </div>`).join("");
+  } catch(e) {}
+}
+
+async function checkBal() {
+  const addr = document.getElementById("w-input").value.trim();
+  if(!addr) return;
+  const el = document.getElementById("w-result");
+  el.innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const d = await fetch(NODE+"/balance/"+addr).then(r=>r.json());
+    el.innerHTML = `
+      <div class="bal-card">
+        <div class="card-title">Balance</div>
+        <div class="bal-amt">${d.balance_agn.toFixed(6)} AGN</div>
+        <div class="bal-addr">${addr}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Actions</div>
+        <p style="font-size:12px;color:#94a3b8;margin-top:8px">To deposit: send AGN to this address from any Agnet wallet</p>
+        <p style="font-size:12px;color:#94a3b8;margin-top:4px">To withdraw: agent.send(to='your_wallet', amount=X)</p>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Address not found</div>';
+  }
+}
+
+function showTab(name) {
+  const names = ["explorer","nodes","wallet","connect","economy"];
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", names[i]===name));
+  document.querySelectorAll(".panel").forEach((p,i) => p.classList.toggle("active", names[i]===name));
+  if(name==="nodes") loadNodes();
+}
+
+function copyCode(btn) {
+  const code = btn.previousElementSibling.textContent;
+  navigator.clipboard.writeText(code).catch(()=>{});
+  btn.textContent = "Copied!";
+  setTimeout(()=>btn.textContent="Copy", 2000);
+}
+
+loadStats();
+loadTxs();
+setInterval(loadStats, 30000);
+setInterval(loadTxs, 15000);
 </script>
 </body>
 </html>
