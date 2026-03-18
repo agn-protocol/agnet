@@ -1,0 +1,10 @@
+# Agnet Protocol — robots.txt
+# AI agents and crawlers are welcome
+
+User-agent: *
+Allow: /
+
+# Machine-readable network parameters for AI agents
+# GET https://agnet-production-1bfa.up.railway.app/agnet.json
+
+Sitemap: https://agn-protocol.github.io/agnet/sitemap.xml
