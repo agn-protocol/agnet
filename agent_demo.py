@@ -69,6 +69,26 @@ def claim_genesis(addr):
     except Exception as e:
         print(f"Genesis error: {e}", flush=True)
 
+def fetch_market_data():
+    data = {}
+    try:
+        r = httpx.get('https://api.coinbase.com/v2/prices/BTC-USD/spot', timeout=5).json()
+        data['BTC_USD'] = float(r['data']['amount'])
+    except:
+        data['BTC_USD'] = None
+    try:
+        r = httpx.get('https://api.frankfurter.app/latest?from=EUR&to=USD', timeout=5).json()
+        data['EUR_USD'] = r['rates']['USD']
+    except:
+        data['EUR_USD'] = None
+    try:
+        r = httpx.get('https://query1.finance.yahoo.com/v8/finance/chart/CL=F',
+            headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
+        data['OIL_WTI'] = r['chart']['result'][0]['meta']['regularMarketPrice']
+    except:
+        data['OIL_WTI'] = None
+    return data
+
 def run_seller(kp):
     print(f"[SELLER] {kp.address}", flush=True)
     if balance(kp.address) == 0:
@@ -76,7 +96,9 @@ def run_seller(kp):
         claim_genesis(kp.address)
         time.sleep(3)
     while True:
-        print(f"[SELLER] Balance: {balance(kp.address)} AGN | Waiting for buyers...", flush=True)
+        bal = balance(kp.address)
+        data = fetch_market_data()
+        print(f"[SELLER] Balance: {bal} AGN | BTC={data.get('BTC_USD')} EUR/USD={data.get('EUR_USD')} OIL={data.get('OIL_WTI')}", flush=True)
         time.sleep(30)
 
 def run_buyer(kp):
