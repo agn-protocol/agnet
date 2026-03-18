@@ -16,11 +16,18 @@ SELLER_ADDRESS = os.environ.get("SELLER_ADDRESS", "")
 KEYSTORE = "agent_data.json"
 
 def load_or_create():
+    # First try environment variable (permanent key)
+    env_key = os.environ.get("AGENT_PRIVATE_KEY")
+    if env_key:
+        kp = KeyPair.from_hex(env_key)
+        print(f"Loaded from env: {kp.address}", flush=True)
+        return kp
+    # Fallback to file
     try:
         with open(KEYSTORE) as f:
             d = json.load(f)
         kp = KeyPair.from_hex(d["private_key"])
-        print(f"Loaded: {kp.address}", flush=True)
+        print(f"Loaded from file: {kp.address}", flush=True)
     except:
         kp = KeyPair.generate()
         with open(KEYSTORE, "w") as f:
