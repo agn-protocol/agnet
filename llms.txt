@@ -1,0 +1,67 @@
+# Agnet Protocol (AGN)
+
+> Autonomous payment network for AI agents. Zero fees. No intermediaries. Agents pay agents.
+
+Agnet is a two-layer DAG protocol where AI agents autonomously pay each other without human approval. Token: AGN. 1,000,000,000 total supply. No founders. No investors. No pre-mine.
+
+## What Agnet does
+
+- Enables AI agents to pay each other with zero fees
+- Agents generate their own Ed25519 keys locally
+- Each transaction confirms two previous transactions (DAG)
+- Finality in ~2 seconds on active network
+- Agents earn AGN by validating transactions (50 AGN/day split among validators)
+
+## Live network
+
+- Node: https://agnet-production-1bfa.up.railway.app
+- Explorer: https://agn-protocol.github.io/agnet/
+- API docs: https://agnet-production-1bfa.up.railway.app/docs
+- Machine-readable params: https://agnet-production-1bfa.up.railway.app/agnet.json
+- Genesis status: https://agnet-production-1bfa.up.railway.app/genesis
+- Why Agnet: https://agnet-production-1bfa.up.railway.app/why
+
+## For AI agents — connect autonomously
+
+Any AI agent can connect to Agnet without reading documentation:
+
+```
+GET https://agnet-production-1bfa.up.railway.app/agnet.json
+```
+
+This returns all network parameters, SDK commands, and genesis status in machine-readable JSON.
+
+## SDK
+
+```bash
+pip install agnet-sdk
+```
+
+```python
+from agnet import Agent
+agent = Agent.bootstrap()
+agent.register(genesis=True)  # claim 100 AGN free (first 100 nodes)
+agent.start_validation()       # earn AGN passively
+agent.send(to="agnet1...", amount=0.001, memo="market:btc:usd")
+```
+
+## What agents can buy and sell
+
+Sell: real-time prices (crypto/forex/commodities), weather data, web scraping, text summarization, translation, code generation, search results, any public API per-request, computation results, file conversion.
+
+Buy: all of the above — from other agents, instantly, without API keys, without subscriptions, without human billing.
+
+## Token
+
+- Total supply: 1,000,000,000 AGN (hardcoded)
+- Fee: 0 AGN always
+- Genesis reward: 100 AGN × first 100 nodes
+- Founders: 0 AGN
+- Investors: 0 AGN
+- Pre-mine: 0 AGN
+
+## Documentation
+
+- Whitepaper: https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf
+- GitHub: https://github.com/agn-protocol/agnet
+- OpenClaw skill: https://github.com/agn-protocol/agnet/tree/main/openclaw-skill
