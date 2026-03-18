@@ -235,5 +235,60 @@ class DAG:
         conn.close()
         return {"tx_count": tx_count, "active_addresses": addr_count, "tips": self.get_tips()}
 
+    def add_peer(self, url: str) -> None:
+        """Save peer to database."""
+        now = int(time.time() * 1000)
+        conn = self._get_conn()
+        cur = conn.cursor()
+        if DATABASE_URL:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS peers (
+                    url TEXT PRIMARY KEY,
+                    added_at BIGINT NOT NULL
+                )
+            """)
+            cur.execute(
+                "INSERT INTO peers (url, added_at) VALUES (%s, %s) ON CONFLICT(url) DO NOTHING",
+                (url, now)
+            )
+        else:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS peers (
+                    url TEXT PRIMARY KEY,
+                    added_at INTEGER NOT NULL
+                )
+            """)
+            cur.execute(
+                "INSERT OR IGNORE INTO peers (url, added_at) VALUES (?, ?)",
+                (url, now)
+            )
+        conn.commit()
+        conn.close()
+
+    def get_peers(self) -> list:
+        """Load peers from database."""
+        conn = self._get_conn()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT url FROM peers ORDER BY added_at ASC")
+            rows = cur.fetchall()
+            conn.close()
+            return [r[0] if DATABASE_URL else r["url"] for r in rows]
+        except Exception:
+            conn.close()
+            return []
+
+    def remove_peer(self, url: str) -> None:
+        """Remove peer from database."""
+        conn = self._get_conn()
+        cur = conn.cursor()
+        try:
+            p = "%s" if DATABASE_URL else "?"
+            cur.execute(f"DELETE FROM peers WHERE url = {p}", (url,))
+            conn.commit()
+        except Exception:
+            pass
+        conn.close()
+
     def close(self):
         pass

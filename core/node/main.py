@@ -33,7 +33,7 @@ distribution = DistributionContract()
 validator = Validator(dag=dag)
 
 # Known peers — populated at startup and via peer discovery
-known_peers: list[str] = ["https://agnet-production-1bfa.up.railway.app"]
+known_peers: list[str] = dag.get_peers() or ["https://agnet-production-1bfa.up.railway.app"]
 
 
 # ─── Background tasks ─────────────────────────────────────────────────────────
@@ -84,6 +84,7 @@ async def bootstrap_peers():
                 for peer in data.get("peers", []):
                     if peer not in known_peers:
                         known_peers.append(peer)
+                        dag.add_peer(peer)
                 # Register ourselves if we know our URL
                 if my_url:
                     await client.post(f"{bootstrap}/peer",
@@ -388,6 +389,7 @@ def add_peer(peer_url: str):
     """Register a peer node."""
     if peer_url not in known_peers:
         known_peers.append(peer_url)
+        dag.add_peer(peer_url)
     return {"status": "ok", "peers": len(known_peers)}
 
 
