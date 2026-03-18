@@ -33,7 +33,7 @@ distribution = DistributionContract()
 validator = Validator(dag=dag)
 
 # Known peers — populated at startup and via peer discovery
-known_peers: list[str] = []
+known_peers: list[str] = ["https://agnet-production-1bfa.up.railway.app"]
 
 
 # ─── Background tasks ─────────────────────────────────────────────────────────
