@@ -57,32 +57,42 @@ async def epoch_loop():
 
 async def bootstrap_peers():
     """On startup connect to known bootstrap nodes and discover peers."""
+    import os
     bootstrap_nodes = [
         "https://agnet-production-1bfa.up.railway.app",
     ]
-    import os
-    my_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
-    if my_url:
-        my_url = f"https://{my_url}"
+    # Try multiple ways to get our public URL
+    my_url = ""
+    domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+    if domain:
+        my_url = f"https://{domain}"
+    else:
+        # Try Railway static URL format
+        service = os.environ.get("RAILWAY_SERVICE_NAME", "")
+        project = os.environ.get("RAILWAY_PROJECT_NAME", "")
+        if service and project:
+            my_url = f"https://{service}-production.up.railway.app"
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         for bootstrap in bootstrap_nodes:
             try:
-                # Skip if this is us
-                if my_url and bootstrap in my_url:
+                if my_url and my_url in bootstrap:
                     continue
                 # Get peers from bootstrap node
                 r = await client.get(f"{bootstrap}/nodes")
                 data = r.json()
                 for peer in data.get("peers", []):
-                    if peer not in known_peers and peer != my_url:
+                    if peer not in known_peers:
                         known_peers.append(peer)
-                # Register ourselves with bootstrap node
+                # Register ourselves if we know our URL
                 if my_url:
                     await client.post(f"{bootstrap}/peer",
                         json={"url": my_url})
-            except Exception:
-                pass
+                    print(f"Registered with bootstrap: {my_url}", flush=True)
+                else:
+                    print("No public URL found - skipping self-registration", flush=True)
+            except Exception as e:
+                print(f"Bootstrap error: {e}", flush=True)
 
 
 @asynccontextmanager
