@@ -1687,6 +1687,20 @@ function toggleMenu() {
   document.getElementById("mobileMenu").classList.toggle("open");
 }
 
+// Close menu on scroll
+window.addEventListener("scroll", function() {
+  document.getElementById("mobileMenu").classList.remove("open");
+}, { passive: true });
+
+// Close menu on outside click
+document.addEventListener("click", function(e) {
+  const menu = document.getElementById("mobileMenu");
+  const hamburger = document.querySelector(".hamburger");
+  if (!menu.contains(e.target) && !hamburger.contains(e.target)) {
+    menu.classList.remove("open");
+  }
+});
+
 
 // ─── Live Demo ────────────────────────────────────────────
 const SELLER = "agnet1w23k2dwmvbolrzutge3t32kukydmjq72";
