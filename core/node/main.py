@@ -55,8 +55,39 @@ async def epoch_loop():
             dag.credit(address, amount)
 
 
+async def bootstrap_peers():
+    """On startup connect to known bootstrap nodes and discover peers."""
+    bootstrap_nodes = [
+        "https://agnet-production-1bfa.up.railway.app",
+    ]
+    import os
+    my_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+    if my_url:
+        my_url = f"https://{my_url}"
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for bootstrap in bootstrap_nodes:
+            try:
+                # Skip if this is us
+                if my_url and bootstrap in my_url:
+                    continue
+                # Get peers from bootstrap node
+                r = await client.get(f"{bootstrap}/nodes")
+                data = r.json()
+                for peer in data.get("peers", []):
+                    if peer not in known_peers and peer != my_url:
+                        known_peers.append(peer)
+                # Register ourselves with bootstrap node
+                if my_url:
+                    await client.post(f"{bootstrap}/peer",
+                        json={"url": my_url})
+            except Exception:
+                pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    asyncio.create_task(bootstrap_peers())
     asyncio.create_task(epoch_loop())
     yield
 
