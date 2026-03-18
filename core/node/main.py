@@ -303,6 +303,30 @@ def network_overview():
     }
 
 
+@app.get("/market", summary="Live market prices")
+async def get_market():
+    """Real-time market prices fetched server-side."""
+    data = {}
+    async with httpx.AsyncClient(timeout=5) as client:
+        try:
+            r = await client.get("https://api.coinbase.com/v2/prices/BTC-USD/spot")
+            data["BTC_USD"] = float(r.json()["data"]["amount"])
+        except:
+            data["BTC_USD"] = None
+        try:
+            r = await client.get("https://api.frankfurter.app/latest?from=EUR&to=USD")
+            data["EUR_USD"] = r.json()["rates"]["USD"]
+        except:
+            data["EUR_USD"] = None
+        try:
+            r = await client.get("https://query1.finance.yahoo.com/v8/finance/chart/CL=F",
+                headers={"User-Agent": "Mozilla/5.0"})
+            data["OIL_WTI"] = r.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
+        except:
+            data["OIL_WTI"] = None
+    return data
+
+
 # ─── Peer communication ───────────────────────────────────────────────────────
 
 async def _broadcast_tx(tx_json: str):
