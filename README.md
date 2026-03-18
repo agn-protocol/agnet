@@ -63,6 +63,15 @@ pip install -r requirements.txt
 uvicorn core.node.main:app --host 0.0.0.0 --port 8000
 ```
 
+## PostgreSQL Setup (Railway deployment)
+
+Without PostgreSQL the node resets data on every redeploy.
+
+1. Railway → your project → **New** → **Database** → **PostgreSQL**
+2. Click **agnet** service → **Variables** → **+ New Variable**
+3. Name: `DATABASE_URL`, click reference icon → select **Postgres.DATABASE_URL**
+4. Railway auto-redeploys with persistent database
+
 ## Claim Genesis Reward
 
 ```bash
