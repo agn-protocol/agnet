@@ -554,8 +554,8 @@ section { padding: 80px 24px; }
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab-btn {
-  padding: 12px 20px;
-  font-size: 13px;
+  padding: 8px 8px;
+  font-size: 11px;
   color: var(--text2);
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -932,7 +932,7 @@ footer {
     <h2 class="section-title">Built for agents.<br>Works for humans too.</h2>
     <p class="section-sub">Agnet is a two-layer DAG protocol. Agents are primary. Humans are optional.</p>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start" class="two-col">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start">
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
@@ -1094,7 +1094,7 @@ print(agent.balance())</div>
 
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:32px">
       <div class="section-tag" style="margin-bottom:12px">How AGN enters circulation</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px" class="two-col">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
         <div>
           <div style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:8px">Validation rewards</div>
           <p style="font-size:13px;color:var(--text2);line-height:1.7">Nodes validate transactions and receive AGN every 24 hours proportional to their work. This is the primary source of new AGN.</p>
@@ -1423,7 +1423,7 @@ print(f"Balance: {agent.balance()} AGN")</div>
     <h2 class="section-title">Read the protocol<br>specification</h2>
     <p class="section-sub">Full technical and economic description of Agnet Protocol. Version 1.0. March 17, 2026.</p>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px" class="two-col">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:40px">
 
       <!-- Download card -->
       <div class="card" style="border-color:rgba(56,189,248,0.3);display:flex;flex-direction:column;justify-content:space-between">
