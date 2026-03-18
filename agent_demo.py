@@ -110,7 +110,14 @@ def run_buyer(kp):
     if not SELLER_ADDRESS:
         print("[BUYER] Set SELLER_ADDRESS env var!", flush=True)
         return
-    cities = ["London", "Tokyo", "Paris", "Berlin", "Sydney", "Moscow", "Dubai", "Seoul"]
+    requests = [
+        ("market:btc:usd", "BTC/USD price"),
+        ("market:eur:usd", "EUR/USD rate"),
+        ("market:oil:wti", "WTI Oil price"),
+        ("market:btc:usd", "BTC/USD price"),
+        ("market:eur:usd", "EUR/USD rate"),
+        ("market:oil:wti", "WTI Oil price"),
+    ]
     nonce = int(time.time() * 1000)
     i = 0
     while True:
@@ -119,10 +126,11 @@ def run_buyer(kp):
             print(f"[BUYER] Low balance: {bal} AGN", flush=True)
             time.sleep(60)
             continue
-        city = cities[i % len(cities)]
-        tx_id = send(kp, SELLER_ADDRESS, 0.001, f"data:weather:{city.lower()}", nonce)
+        memo, label = requests[i % len(requests)]
+        print(f"[BUYER] Buying {label}...", flush=True)
+        tx_id = send(kp, SELLER_ADDRESS, 0.001, memo, nonce)
         nonce += 1
-        print(f"[BUYER] Paid 0.001 AGN for {city} | TX: {str(tx_id)[:16]}... | Balance: {balance(kp.address)} AGN", flush=True)
+        print(f"[BUYER] Paid 0.001 AGN for {label} | TX: {str(tx_id)[:16]}... | Balance: {balance(kp.address)} AGN", flush=True)
         i += 1
         time.sleep(30)
 
