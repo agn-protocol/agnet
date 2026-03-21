@@ -38,73 +38,393 @@ known_peers: list[str] = dag.get_peers() or ["https://agnet-production-1bfa.up.r
 
 # ─── AGP-2 Agent Market ────────────────────────────────────────────────────
 
-agp2_offers: dict = {}    # address -> {service, price, stake, ts}
-agp2_requests: dict = {}  # tx_id -> {service, pay, deadline, buyer, ts}
-agp2_ratings: dict = {}   # address -> {ok: int, fail: int}
+ESCROW_ADDRESS = "agnet_protocol_escrow"
+BURN_ADDRESS = "agnet_protocol_burn"
+MIN_OFFER_STAKE_NAGN = 10_000_000   # 10 AGN minimum to list an offer
+DELIVERY_TIMEOUT_SEC = 3.0          # seller has 3 sec to deliver after accept
+DISPUTE_WINDOW_SEC = 60.0           # buyer has 60 sec to flag after delivery
 
-def _parse_agp2_memo(tx):
-    """Parse AGP-2 memo records: offer|request|rating"""
+# Oracle sources for public data verification
+# Format: source_key -> URL template (use {symbol}, {id}, etc.)
+ORACLE_URLS: dict = {
+    "binance":      "https://api.binance.com/api/v3/ticker/price",
+    "coingecko":    "https://api.coingecko.com/api/v3/simple/price",
+    "coinbase":     "https://api.coinbase.com/v2/prices/{symbol}/spot",
+    "frankfurter":  "https://api.frankfurter.app/latest",
+    "openweather":  "https://api.openweathermap.org/data/2.5/weather",
+}
+
+agp2_offers: dict = {}           # "seller:service" -> offer data
+agp2_requests: dict = {}         # req_tx_id -> request data
+agp2_accepts: dict = {}          # req_tx_id -> {seller, time, tx_id}
+agp2_deliveries: dict = {}       # req_tx_id -> {seller, data_hash, sample_hash, time, tx_id, status}
+agp2_ratings: dict = {}          # seller_addr -> {scores, count, avg}
+agp2_burns: dict = {}            # req_tx_id -> burn record
+agp2_closed: set = set()         # req_tx_ids fully resolved
+agp2_pending_disputes: dict = {} # req_tx_id -> {time, pay_nagn, seller, buyer} for 60s window
+
+
+def _memo_params(parts: list) -> dict:
+    """Parse key:value pairs from memo parts list."""
+    params = {}
+    for p in parts:
+        if ":" in p:
+            k, _, v = p.partition(":")
+            params[k.strip()] = v.strip()
+    return params
+
+
+def _parse_agp2_memo(tx, restore_mode: bool = False):
+    """Parse AGP-2 memo and update market state. All security checks here."""
     memo = tx.memo.strip() if tx.memo else ""
-    if not memo:
+    if not memo or "|" not in memo:
         return
     parts = memo.split("|")
-    if len(parts) < 2:
-        return
-    record_type = parts[0].lower()
+    cmd = parts[0].lower()
 
-    if record_type == "offer" and len(parts) >= 3:
+    # ── offer|<service>|price:<nagn>|stake:<nagn> ──────────────────────────
+    if cmd == "offer":
+        if len(parts) < 2:
+            return
         service = parts[1]
-        price = 0
-        stake = 0
-        for p in parts[2:]:
-            if p.startswith("price:"):
-                try: price = int(p.split(":")[1])
-                except: pass
-            if p.startswith("stake:"):
-                try: stake = int(p.split(":")[1])
-                except: pass
+        params = _memo_params(parts[2:])
+        try:
+            price = int(params.get("price", 0))
+            declared_stake = int(params.get("stake", 0))
+        except ValueError:
+            return
+
+        # Sybil protection: minimum stake to publish offer
+        if declared_stake < MIN_OFFER_STAKE_NAGN:
+            return
+
+        # Fake stake check: real stake must cover declared stake
+        real_stake = staking.get_stake(tx.sender) or 0
+        if real_stake < declared_stake:
+            return
+
         agp2_offers[f"{tx.sender}:{service}"] = {
             "address": tx.sender,
             "service": service,
             "price_nagn": price,
-            "stake_nagn": stake,
+            "stake_nagn": declared_stake,
             "timestamp": tx.timestamp,
-            "tx_id": tx.id
+            "tx_id": tx.id,
         }
 
-    elif record_type == "request" and len(parts) >= 2:
-        service = ""
-        pay = 0
-        deadline = 3
-        for p in parts[1:]:
-            if p.startswith("need:"):
-                service = p[5:]
-            elif p.startswith("pay:"):
-                try: pay = int(p.split(":")[1])
-                except: pass
-            elif p.startswith("deadline:"):
-                try: deadline = int(p.split(":")[1])
-                except: pass
+    # ── request|need:<service>|pay:<nagn>|source:<oracle>|sym:<symbol> ────
+    elif cmd == "request":
+        params = _memo_params(parts[1:])
+        service = params.get("need", "")
+        source = params.get("source", "")    # optional oracle source for ZKP check
+        sym = params.get("sym", "")          # optional symbol/id for oracle query
+        try:
+            # Real escrow: use actual tx.amount when buyer sends VALUE TX to escrow
+            tx_amount = getattr(tx, "amount", 0) or 0
+            pay = tx_amount if tx_amount > 0 else int(params.get("pay", 0))
+            deadline = int(params.get("deadline", int(DELIVERY_TIMEOUT_SEC)))
+        except ValueError:
+            return
+
+        if not service or pay <= 0:
+            return
+
         agp2_requests[tx.id] = {
             "tx_id": tx.id,
             "buyer": tx.sender,
             "service": service,
             "pay_nagn": pay,
             "deadline_sec": deadline,
-            "timestamp": tx.timestamp
+            "timestamp": tx.timestamp,
+            "status": "open",
+            "source": source,   # oracle source if specified
+            "sym": sym,         # symbol for oracle query
         }
 
-    elif record_type == "rating" and len(parts) >= 3:
-        result = "ok"
-        for p in parts[1:]:
-            if p.startswith("result:"):
-                result = p[7:].lower()
-        if tx.sender not in agp2_ratings:
-            agp2_ratings[tx.sender] = {"ok": 0, "fail": 0, "address": tx.sender}
-        if result == "ok":
-            agp2_ratings[tx.sender]["ok"] += 1
+    # ── accept|req:<req_tx_id> ─────────────────────────────────────────────
+    elif cmd == "accept":
+        params = _memo_params(parts[1:])
+        req_id = params.get("req", "")
+        if not req_id:
+            return
+
+        req = agp2_requests.get(req_id)
+        if not req or req.get("status") != "open":
+            return  # already taken or doesn't exist
+
+        # Replay / double-accept protection
+        if req_id in agp2_accepts:
+            return
+
+        service = req["service"]
+        offer = agp2_offers.get(f"{tx.sender}:{service}")
+        if not offer:
+            return  # seller has no matching offer
+
+        # Fake stake check at accept time (skip in restore — already validated live)
+        if not restore_mode:
+            real_stake = staking.get_stake(tx.sender) or 0
+            if real_stake < offer["stake_nagn"]:
+                return
+
+        agp2_accepts[req_id] = {
+            "seller": tx.sender,
+            "time": time.time() if not restore_mode else tx.timestamp / 1000,
+            "tx_id": tx.id,
+        }
+        agp2_requests[req_id]["status"] = "accepted"
+
+    # ── deliver|req:<req_tx_id>|hash:<sha256>|sample:<sample_sha256> ───────
+    elif cmd == "deliver":
+        params = _memo_params(parts[1:])
+        req_id = params.get("req", "")
+        data_hash = params.get("hash", "")
+        sample_hash = params.get("sample", "")  # optional 20% sample hash
+
+        if not req_id or req_id in agp2_closed:
+            return
+
+        accept = agp2_accepts.get(req_id)
+        if not accept:
+            return
+
+        # Only the accepted seller can deliver
+        if accept["seller"] != tx.sender:
+            return
+
+        # Replay protection: one delivery per request
+        if req_id in agp2_deliveries:
+            return
+
+        # Timing check (skip in restore)
+        if not restore_mode:
+            elapsed = time.time() - accept["time"]
+            if elapsed > DELIVERY_TIMEOUT_SEC:
+                return  # timeout already handled by _enforce_timeouts
+
+        agp2_deliveries[req_id] = {
+            "seller": tx.sender,
+            "data_hash": data_hash,
+            "sample_hash": sample_hash,
+            "time": time.time() if not restore_mode else tx.timestamp / 1000,
+            "tx_id": tx.id,
+            "status": "pending",
+        }
+
+        if not restore_mode:
+            # Launch async verification (oracle check or dispute queue)
+            asyncio.create_task(_verify_delivery(req_id))
         else:
-            agp2_ratings[tx.sender]["fail"] += 1
+            agp2_requests[req_id]["status"] = "delivered"
+            agp2_deliveries[req_id]["status"] = "verified"
+            agp2_closed.add(req_id)
+
+    # ── flag|req:<req_tx_id>|reason:<text> ────────────────────────────────
+    elif cmd == "flag":
+        params = _memo_params(parts[1:])
+        req_id = params.get("req", "")
+        reason = params.get("reason", "dispute")
+
+        if not req_id or req_id in agp2_closed:
+            return
+
+        req = agp2_requests.get(req_id)
+        if not req:
+            return
+
+        # Only the buyer of this deal can flag it
+        if tx.sender != req["buyer"]:
+            return
+
+        # Can only flag a delivered deal
+        if req_id not in agp2_deliveries:
+            return
+
+        if not restore_mode:
+            asyncio.create_task(
+                _burn_stake(agp2_accepts[req_id]["seller"], req_id, f"flag:{reason}")
+            )
+
+    # ── rating|for:<seller_addr>|score:<1-5>|deal:<req_tx_id> ─────────────
+    elif cmd == "rating":
+        params = _memo_params(parts[1:])
+        seller_addr = params.get("for", "")
+        deal_id = params.get("deal", "")
+        try:
+            score = int(params.get("score", 0))
+        except ValueError:
+            return
+
+        if not seller_addr or not 1 <= score <= 5:
+            return
+
+        # Verify rater was actually the buyer of this deal
+        if deal_id:
+            req = agp2_requests.get(deal_id)
+            if not req or req["buyer"] != tx.sender:
+                return
+            if deal_id not in agp2_closed:
+                return  # deal must be complete
+
+        if seller_addr not in agp2_ratings:
+            agp2_ratings[seller_addr] = {"address": seller_addr, "scores": [], "count": 0, "avg": 0.0}
+
+        r = agp2_ratings[seller_addr]
+        r["scores"].append(score)
+        r["count"] = len(r["scores"])
+        r["avg"] = round(sum(r["scores"]) / r["count"], 2)
+
+
+def _finalize_deal(req_id: str):
+    """Credit seller and close a successfully delivered deal."""
+    req = agp2_requests.get(req_id)
+    delivery = agp2_deliveries.get(req_id)
+    accept = agp2_accepts.get(req_id)
+    if not req or not delivery or not accept:
+        return
+
+    seller = accept["seller"]
+    pay_amount = req["pay_nagn"]
+
+    dag.credit(seller, pay_amount)
+    delivery["status"] = "verified"
+    req["status"] = "delivered"
+    agp2_closed.add(req_id)
+    print(f"[AGP-2] DEAL closed: {pay_amount} nAGN → {seller[:16]}... req={req_id[:16]}...", flush=True)
+
+
+async def _burn_stake(seller_addr: str, req_id: str, reason: str):
+    """Burn 50% of seller's declared stake and refund buyer."""
+    if req_id in agp2_closed:
+        return
+
+    req = agp2_requests.get(req_id)
+    if not req:
+        return
+
+    service = req.get("service", "")
+    offer = agp2_offers.get(f"{seller_addr}:{service}")
+    declared_stake = offer["stake_nagn"] if offer else 0
+    burn_amount = declared_stake // 2
+
+    # Refund buyer
+    buyer = req.get("buyer")
+    pay_amount = req.get("pay_nagn", 0)
+    if buyer and pay_amount > 0:
+        dag.credit(buyer, pay_amount)
+
+    # Remove seller's offer — must re-register with enough stake
+    offer_key = f"{seller_addr}:{service}"
+    if offer_key in agp2_offers:
+        del agp2_offers[offer_key]
+
+    agp2_burns[req_id] = {
+        "seller": seller_addr,
+        "reason": reason,
+        "declared_stake_nagn": declared_stake,
+        "burn_nagn": burn_amount,
+        "buyer_refund_nagn": pay_amount,
+        "time": time.time(),
+    }
+    req["status"] = "burned"
+    agp2_closed.add(req_id)
+    print(f"[AGP-2] BURN {burn_amount} nAGN seller={seller_addr[:16]}... reason={reason} req={req_id[:16]}...", flush=True)
+
+
+async def _enforce_timeouts():
+    """Background: burn sellers who accepted but didn't deliver within timeout."""
+    while True:
+        await asyncio.sleep(1)
+        now = time.time()
+        for req_id, accept_data in list(agp2_accepts.items()):
+            if req_id in agp2_closed:
+                continue
+            if req_id not in agp2_deliveries:
+                if now - accept_data["time"] > DELIVERY_TIMEOUT_SEC:
+                    await _burn_stake(accept_data["seller"], req_id, "timeout")
+
+
+async def _fetch_oracle_hash(source: str, sym: str) -> str | None:
+    """Fetch public data from oracle and return sha256 hex of the JSON response."""
+    import hashlib, json
+    url = ORACLE_URLS.get(source.lower())
+    if not url:
+        return None
+    try:
+        params = {}
+        if source == "binance" and sym:
+            params["symbol"] = sym.upper()
+        elif source == "coingecko" and sym:
+            params["ids"] = sym.lower()
+            params["vs_currencies"] = "usd"
+        elif source == "coinbase" and sym:
+            url = url.format(symbol=sym.upper())
+        elif source == "frankfurter" and sym:
+            parts = sym.split("-")
+            if len(parts) == 2:
+                params["from"] = parts[0].upper()
+                params["to"] = parts[1].upper()
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            # Normalize: sort keys for deterministic hash
+            data = r.json()
+            canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+            return hashlib.sha256(canonical.encode()).hexdigest()
+    except Exception as e:
+        print(f"[AGP-2] oracle error source={source} sym={sym}: {e}", flush=True)
+        return None
+
+
+async def _verify_delivery(req_id: str):
+    """Verify a delivery: oracle check (public data) or 60s dispute window (unique content)."""
+    req = agp2_requests.get(req_id)
+    delivery = agp2_deliveries.get(req_id)
+    if not req or not delivery or req_id in agp2_closed:
+        return
+
+    source = req.get("source", "")
+    sym = req.get("sym", "")
+
+    if source and source in ORACLE_URLS:
+        # Case A: public data — verify against oracle immediately
+        expected_hash = await _fetch_oracle_hash(source, sym)
+        delivered_hash = delivery.get("data_hash", "")
+        if expected_hash and delivered_hash == expected_hash:
+            _finalize_deal(req_id)
+            print(f"[AGP-2] oracle OK source={source} req={req_id[:16]}...", flush=True)
+        else:
+            await _burn_stake(
+                agp2_accepts[req_id]["seller"], req_id,
+                f"oracle_mismatch:expected={expected_hash and expected_hash[:8]}..."
+            )
+            print(f"[AGP-2] oracle FAIL source={source} req={req_id[:16]}...", flush=True)
+    else:
+        # Case B: unique content — queue for 60s dispute window
+        agp2_pending_disputes[req_id] = {
+            "time": time.time(),
+            "pay_nagn": req["pay_nagn"],
+            "seller": agp2_accepts[req_id]["seller"],
+            "buyer": req["buyer"],
+        }
+        delivery["status"] = "dispute_window"
+        req["status"] = "dispute_window"
+        print(f"[AGP-2] dispute window started req={req_id[:16]}...", flush=True)
+
+
+async def _dispute_checker():
+    """Background: auto-finalize deals after 60s dispute window with no flag."""
+    while True:
+        await asyncio.sleep(5)
+        now = time.time()
+        for req_id, d in list(agp2_pending_disputes.items()):
+            if req_id in agp2_closed:
+                del agp2_pending_disputes[req_id]
+                continue
+            if now - d["time"] > DISPUTE_WINDOW_SEC:
+                del agp2_pending_disputes[req_id]
+                _finalize_deal(req_id)
+                print(f"[AGP-2] dispute window expired, auto-finalized req={req_id[:16]}...", flush=True)
 
 
 # ─── Background tasks ─────────────────────────────────────────────────────────
@@ -186,34 +506,41 @@ async def bootstrap_peers():
 def _restore_agp2_state():
     """Rebuild AGP-2 in-memory state from all stored transactions on startup."""
     try:
-        from core.node.dag import get_conn, PLACEHOLDER
+        from core.node.dag import get_conn, PLACEHOLDER, DATABASE_URL
         conn = get_conn()
         cur = conn.cursor()
+        P = PLACEHOLDER
         cur.execute(
-            f"SELECT sender, memo, timestamp, id FROM transactions "
-            f"WHERE memo LIKE {PLACEHOLDER} OR memo LIKE {PLACEHOLDER} OR memo LIKE {PLACEHOLDER} "
+            f"SELECT sender, memo, timestamp, id, amount FROM transactions "
+            f"WHERE memo LIKE {P} OR memo LIKE {P} OR memo LIKE {P} "
+            f"OR memo LIKE {P} OR memo LIKE {P} OR memo LIKE {P} "
             f"ORDER BY timestamp ASC",
-            ("offer|%", "request|%", "rating|%")
+            ("offer|%", "request|%", "accept|%", "deliver|%", "flag|%", "rating|%")
         )
         rows = cur.fetchall()
         conn.close()
 
         class _TX:
-            def __init__(self, sender, memo, timestamp, tx_id):
+            def __init__(self, sender, memo, timestamp, tx_id, amount=0):
                 self.sender = sender
                 self.memo = memo
                 self.timestamp = timestamp
                 self.id = tx_id
+                self.amount = amount
 
-        from core.node.dag import DATABASE_URL
         for row in rows:
             if DATABASE_URL:
-                tx = _TX(row[0], row[1], row[2], row[3])
+                tx = _TX(row[0], row[1], row[2], row[3], row[4] or 0)
             else:
-                tx = _TX(row["sender"], row["memo"], row["timestamp"], row["id"])
-            _parse_agp2_memo(tx)
+                tx = _TX(row["sender"], row["memo"], row["timestamp"], row["id"], row["amount"] or 0)
+            _parse_agp2_memo(tx, restore_mode=True)
 
-        print(f"[AGP-2] Restored: {len(agp2_offers)} offers, {len(agp2_requests)} requests, {len(agp2_ratings)} ratings", flush=True)
+        print(
+            f"[AGP-2] Restored: {len(agp2_offers)} offers, {len(agp2_requests)} requests, "
+            f"{len(agp2_accepts)} accepts, {len(agp2_deliveries)} deliveries, "
+            f"{len(agp2_burns)} burns, {len(agp2_ratings)} rated agents",
+            flush=True
+        )
     except Exception as e:
         print(f"[AGP-2] Restore error: {e}", flush=True)
 
@@ -223,6 +550,8 @@ async def lifespan(app: FastAPI):
     _restore_agp2_state()
     asyncio.create_task(bootstrap_peers())
     asyncio.create_task(epoch_loop())
+    asyncio.create_task(_enforce_timeouts())
+    asyncio.create_task(_dispute_checker())
     yield
 
 
@@ -253,35 +582,54 @@ async def get_offers():
     return {"offers": list(agp2_offers.values()), "count": len(agp2_offers)}
 
 
-@app.get("/requests", summary="AGP-2 active requests")
-async def get_requests():
-    """List all pending buy requests."""
-    return {"requests": list(agp2_requests.values()), "count": len(agp2_requests)}
+@app.get("/requests", summary="AGP-2 open requests")
+async def get_requests(status: str = "open"):
+    """List requests by status: open | accepted | delivered | burned | all"""
+    if status == "all":
+        reqs = list(agp2_requests.values())
+    else:
+        reqs = [r for r in agp2_requests.values() if r.get("status") == status]
+    return {"requests": reqs, "count": len(reqs), "status_filter": status}
 
 
 @app.get("/ratings/{address}", summary="AGP-2 agent reputation")
 async def get_ratings(address: str):
-    """Get agent reputation from rating transactions."""
-    r = agp2_ratings.get(address, {"ok": 0, "fail": 0, "address": address})
-    total = r["ok"] + r["fail"]
-    score = round(r["ok"] / total * 100, 1) if total > 0 else None
-    return {**r, "total": total, "score_pct": score}
+    """Get agent reputation score."""
+    r = agp2_ratings.get(address)
+    if not r:
+        return {"address": address, "count": 0, "avg": None, "scores": []}
+    return r
 
 
 @app.get("/agp2/market", summary="AGP-2 market overview")
 async def get_agp2_market():
-    """Full AGP-2 market state: offers, requests, top agents."""
-    top = sorted(agp2_ratings.values(), key=lambda x: x["ok"], reverse=True)[:10]
+    """Full AGP-2 market state: offers, open requests, top agents, recent burns."""
+    open_reqs = [r for r in agp2_requests.values() if r.get("status") == "open"]
+    dispute_reqs = [r for r in agp2_requests.values() if r.get("status") == "dispute_window"]
+    top = sorted(agp2_ratings.values(), key=lambda x: x["avg"] * x["count"], reverse=True)[:10]
+    recent_burns = sorted(agp2_burns.values(), key=lambda x: x["time"], reverse=True)[:20]
     return {
         "offers": list(agp2_offers.values()),
-        "requests": list(agp2_requests.values()),
+        "open_requests": open_reqs,
         "top_agents": top,
+        "recent_burns": recent_burns,
         "stats": {
             "total_offers": len(agp2_offers),
-            "total_requests": len(agp2_requests),
-            "total_rated_agents": len(agp2_ratings)
-        }
+            "open_requests": len(open_reqs),
+            "dispute_window": len(dispute_reqs),
+            "total_deals": len(agp2_closed),
+            "delivered": sum(1 for r in agp2_requests.values() if r.get("status") == "delivered"),
+            "burned": len(agp2_burns),
+            "total_rated_agents": len(agp2_ratings),
+        },
     }
+
+
+@app.get("/agp2/burns", summary="AGP-2 burn history")
+async def get_burns():
+    """History of all stake burns (fraud/timeout)."""
+    burns = sorted(agp2_burns.values(), key=lambda x: x["time"], reverse=True)
+    return {"burns": burns, "count": len(burns)}
 
 class TxSubmit(BaseModel):
     tx_json: str  # serialized Transaction
@@ -505,7 +853,7 @@ def network_overview():
             "explorer": "https://agn-protocol.github.io/agnet/explorer/",
             "api_docs": "https://agnet-production-1bfa.up.railway.app/docs",
             "github": "https://github.com/agn-protocol/agnet",
-            "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/agnet-whitepaper.pdf",
+            "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf",
         },
     }
 
@@ -565,25 +913,64 @@ def agnet_json():
     cl = s["genesis_count"]
     return {
         "protocol": "AGN",
-        "version": "1.0",
-        "standard": "AGP-1",
+        "version": "2.0",
+        "standards": ["AGP-1", "AGP-2"],
         "launch_date": "2026-03-17T17:00:00Z",
         "repository": "https://github.com/agn-protocol/agnet",
         "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf",
-        "token": {"symbol": "AGN", "total_supply": 1000000000, "fee": 0},
+        "token": {"symbol": "AGN", "total_supply": 1_000_000_000, "fee": 0},
         "genesis": {"open": s["genesis_open"], "claimed": cl, "remaining": 100 - cl, "reward_agn": 100},
         "endpoints": {
-            "submit_tx": "POST /tx",
-            "balance": "GET /balance/{address}",
-            "tips": "GET /tips",
-            "stake": "POST /stake",
-            "stats": "GET /stats",
-            "genesis": "GET /genesis",
-            "why": "GET /why",
+            "submit_tx":    "POST /tx",
+            "balance":      "GET /balance/{address}",
+            "tips":         "GET /tips",
+            "stake":        "POST /stake",
+            "stats":        "GET /stats",
+            "genesis":      "GET /genesis",
+            "why":          "GET /why",
+        },
+        "agp2": {
+            "description": "Agent Market — trustless service exchange between AI agents",
+            "escrow":       ESCROW_ADDRESS,
+            "burn_address": BURN_ADDRESS,
+            "min_stake_agn": MIN_OFFER_STAKE_NAGN / 1_000_000,
+            "delivery_timeout_sec": DELIVERY_TIMEOUT_SEC,
+            "dispute_window_sec":   DISPUTE_WINDOW_SEC,
+            "burn_on_fraud_pct":    50,
+            "oracles": list(ORACLE_URLS.keys()),
+            "endpoints": {
+                "market":   "GET /agp2/market",
+                "offers":   "GET /offers",
+                "requests": "GET /requests?status=open",
+                "burns":    "GET /agp2/burns",
+                "ratings":  "GET /ratings/{address}",
+            },
+            "memo_format": {
+                "offer":   "offer|<service>|price:<nagn>|stake:<nagn>",
+                "request": "request|need:<service>|pay:<nagn>|source:<oracle>|sym:<symbol>",
+                "accept":  "accept|req:<req_tx_id>",
+                "deliver": "deliver|req:<req_tx_id>|hash:<sha256>|sample:<sample_sha256>",
+                "flag":    "flag|req:<req_tx_id>|reason:<text>",
+                "rating":  "rating|for:<seller_addr>|score:<1-5>|deal:<req_tx_id>",
+            },
+            "deal_flow": [
+                "1. Seller: publish offer (command TX with offer| memo)",
+                "2. Buyer: POST request TX to escrow address with amount=pay + request| memo",
+                "3. Seller: poll GET /requests?status=open, send accept| memo within seconds",
+                "4. Seller: compute sha256(data), send deliver| memo within 3s of accept",
+                "5. Node: verifies via oracle (public data) or starts 60s dispute window",
+                "6. On success: seller credited. On failure/timeout: 50% stake burned, buyer refunded.",
+            ],
         },
         "sdk": {
             "python": "pip install agnet-sdk",
-            "quickstart": ["from agnet import Agent", "agent = Agent.bootstrap()", "agent.start_validation()"],
+            "quickstart": [
+                "from agnet import Agent",
+                "agent = Agent.bootstrap()",
+                "agent.register(genesis=True)",
+                "agent.offer('price_feed', price_agn=0.01, stake_agn=10.0)",
+                "agent.watch_market('price_feed', on_request=my_handler)",
+            ],
         },
     }
 

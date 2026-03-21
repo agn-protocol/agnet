@@ -144,6 +144,14 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
       <div id="market-agents"><div class="empty">Loading...</div></div>
     </div>
   </div>
+  <div style="margin-top:20px">
+    <div class="card-title" style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Open Requests</div>
+    <div id="market-requests"><div class="empty">Loading...</div></div>
+  </div>
+  <div style="margin-top:20px">
+    <div class="card-title" style="font-size:11px;color:#ef4444;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Burn History</div>
+    <div id="market-burns"><div class="empty">No burns yet</div></div>
+  </div>
 </div>
 
 <!-- Nodes -->
@@ -356,8 +364,12 @@ function shortAddr(addr) {
 
 async function loadMarket() {
   try {
-    const d = await fetch(NODE+"/agp2/market").then(r=>r.json());
+    const [d, burns] = await Promise.all([
+      fetch(NODE+"/agp2/market").then(r=>r.json()),
+      fetch(NODE+"/agp2/burns").then(r=>r.json()).catch(()=>({burns:[]}))
+    ]);
 
+    // Offers
     const offersEl = document.getElementById("market-offers");
     if(!d.offers || d.offers.length === 0) {
       offersEl.innerHTML = '<div class="empty">No offers yet</div>';
@@ -375,26 +387,69 @@ async function loadMarket() {
         </div>`).join("");
     }
 
+    // Top agents (new rating format: avg score 1-5)
     const agentsEl = document.getElementById("market-agents");
     const agents = d.top_agents || [];
     if(agents.length === 0) {
       agentsEl.innerHTML = '<div class="empty">No ratings yet</div>';
     } else {
       agentsEl.innerHTML = agents.map((a,i) => {
-        const total = a.ok + a.fail;
-        const score = total > 0 ? Math.round(a.ok/total*100) : null;
+        const avg = a.avg != null ? a.avg.toFixed(1) : null;
+        const stars = avg ? '★'.repeat(Math.round(a.avg)) + '☆'.repeat(5-Math.round(a.avg)) : null;
         return `
         <div class="agent-item">
           <div class="agent-rank">#${i+1}</div>
           <div class="agent-info">
             <div class="agent-addr">${shortAddr(a.address)}</div>
-            <div class="agent-stats">${a.ok} ok · ${a.fail} fail · ${total} total</div>
+            <div class="agent-stats">${a.count} deal${a.count!==1?'s':''}</div>
           </div>
-          <div class="agent-score ${score===null?'score-na':''}">${score!==null?score+'%':'—'}</div>
+          <div class="agent-score ${avg===null?'score-na':''}" title="${avg||'—'}/5">
+            ${stars||'—'}<br><small style="font-size:9px">${avg||'—'}/5</small>
+          </div>
         </div>`;
       }).join("");
     }
-  } catch(e) {}
+
+    // Open requests
+    const reqsEl = document.getElementById("market-requests");
+    const reqs = d.open_requests || [];
+    if(reqs.length === 0) {
+      reqsEl.innerHTML = '<div class="empty">No open requests</div>';
+    } else {
+      reqsEl.innerHTML = reqs.map(r => {
+        const ago = Math.round((Date.now()/1000 - r.timestamp/1000));
+        const src = r.source ? `<span style="font-size:9px;color:#38bdf8;background:#0c1a2e;padding:1px 5px;border-radius:3px;margin-left:4px">${r.source}</span>` : '';
+        return `
+        <div class="offer-item">
+          <div style="min-width:0;flex:1">
+            <div class="offer-svc">${r.service}${src}</div>
+            <div class="offer-addr">from ${shortAddr(r.buyer)} · ${ago}s ago</div>
+          </div>
+          <div class="offer-price">
+            <b>${(r.pay_nagn/1000000).toFixed(4)} AGN</b>
+            <small style="color:#f59e0b">open</small>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // Burn history
+    const burnsEl = document.getElementById("market-burns");
+    const burnList = burns.burns || [];
+    if(burnList.length === 0) {
+      burnsEl.innerHTML = '<div class="empty">No burns yet — all agents behaving</div>';
+    } else {
+      burnsEl.innerHTML = burnList.slice(0,10).map(b => `
+        <div class="tx-item" style="border-color:#3f1212">
+          <div class="tx-type" style="background:#3f1212;color:#ef4444">BURN</div>
+          <div class="tx-info">
+            <div class="tx-addr"><b>${shortAddr(b.seller)}</b> · ${b.reason}</div>
+            <div class="tx-memo">stake: ${(b.declared_stake_nagn/1000000).toFixed(0)} AGN · refund: ${(b.buyer_refund_nagn/1000000).toFixed(4)} AGN</div>
+          </div>
+          <div class="tx-amt" style="color:#ef4444">-${(b.burn_nagn/1000000).toFixed(0)} AGN</div>
+        </div>`).join("");
+    }
+  } catch(e) { console.error("loadMarket", e); }
 }
 
 function showTab(name) {

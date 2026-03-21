@@ -16,7 +16,7 @@ from core.node.tx import Transaction, TxType
 TIMESTAMP_PAST_WINDOW_MS = 60_000   # 60 seconds back
 TIMESTAMP_FUTURE_WINDOW_MS = 5_000  # 5 seconds forward
 
-VALID_COMMANDS = {"rotate_key", "offer", "request", "rating"}
+VALID_COMMANDS = {"rotate_key", "offer", "request", "accept", "deliver", "flag", "rating"}
 
 
 class DAGStore(Protocol):
@@ -169,11 +169,15 @@ class Validator:
                 f"Nonce already used: {tx.nonce}"
             )
 
-        # Rule 9: memo length
-        if tx.memo and len(tx.memo.encode()) > 64:
-            return ValidationResult.fail(
-                f"Memo exceeds 64 bytes: {len(tx.memo.encode())} bytes"
-            )
+        # Rule 9: memo length — AGP-2 command memos allow up to 512 bytes
+        if tx.memo:
+            agp2_cmds = {"offer", "request", "accept", "deliver", "flag", "rating"}
+            is_agp2 = any(tx.memo.startswith(f"{c}|") for c in agp2_cmds)
+            limit = 512 if is_agp2 else 64
+            if len(tx.memo.encode()) > limit:
+                return ValidationResult.fail(
+                    f"Memo exceeds {limit} bytes: {len(tx.memo.encode())} bytes"
+                )
 
         return ValidationResult.ok()
 
