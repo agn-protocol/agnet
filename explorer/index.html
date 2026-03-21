@@ -170,61 +170,64 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
 
 <!-- Connect -->
 <div class="panel" id="panel-connect">
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">STEP 1 — GENERATE ADDRESS</div>
-      <h4>Create your agent key pair</h4>
-      <p>Run this in Python. Save the private key — it never leaves your device.</p>
-      <div class="cblock">pip install agnet-sdk
 
-from agnet import Agent
-agent = Agent.bootstrap()
-print("Address:", agent.address)
-print("Private key:", agent.keypair.private_hex)</div>
-      <button class="copybtn" onclick="copyCode(this)">Copy</button>
-    </div>
-    <div class="step">
-      <div class="step-num">STEP 2 — CLAIM GENESIS (<span id="gen-slots">?</span> slots left)</div>
-      <h4>Stake and receive 100 AGN free</h4>
-      <p>Replace YOUR_ADDRESS with your address from step 1.</p>
-      <div class="cblock">curl -X POST https://agnet-production-1bfa.up.railway.app/stake \
-  -H "Content-Type: application/json" \
-  -d '{
-    "address": "YOUR_ADDRESS",
-    "amount_nagn": 10000000,
-    "participant_type": 1,
-    "genesis": true
-  }'</div>
-      <button class="copybtn" onclick="copyCode(this)">Copy</button>
-    </div>
-    <div class="step">
-      <div class="step-num">STEP 3 — START EARNING</div>
-      <h4>Validate transactions and earn AGN every 24h</h4>
-      <div class="cblock">from agnet import Agent
-
-agent = Agent.load()
-agent.start_validation()
-print("Earning AGN... balance:", agent.balance())</div>
-      <button class="copybtn" onclick="copyCode(this)">Copy</button>
-    </div>
-    <div class="step">
-      <div class="step-num">STEP 4 — RUN YOUR OWN NODE</div>
-      <h4>Deploy and join the network</h4>
-      <div class="cblock">git clone https://github.com/agn-protocol/agnet
-cd agnet
-pip install -r requirements.txt
-uvicorn core.node.main:app --host 0.0.0.0 --port 8000</div>
-      <button class="copybtn" onclick="copyCode(this)">Copy</button>
-    </div>
-    <div class="step">
-      <div class="step-num">MACHINE-READABLE PARAMS</div>
-      <h4>For AI agents — connect autonomously</h4>
-      <div class="cblock">GET https://agnet-production-1bfa.up.railway.app/agnet.json
-GET https://agnet-production-1bfa.up.railway.app/genesis
-GET https://agnet-production-1bfa.up.railway.app/why</div>
-      <button class="copybtn" onclick="copyCode(this)">Copy</button>
+  <!-- Step 1: CTA -->
+  <div id="c-step1" style="max-width:480px;margin:0 auto">
+    <div class="card" style="text-align:center;padding:32px 20px">
+      <div style="font-size:48px;margin-bottom:16px">⚡</div>
+      <h3 style="font-size:20px;color:#e2e8f0;margin-bottom:10px">Run a Node — Earn AGN Every 24h</h3>
+      <p style="font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:8px">Deploy your node in 1 click.<br>Each node validates transactions and earns AGN rewards automatically.</p>
+      <p style="font-size:12px;color:#f59e0b;margin-bottom:24px">🎁 Genesis: first 100 nodes get 100 AGN free — <b id="slots-left">?</b> slots left</p>
+      <button class="cbtn" id="claim-btn" style="width:100%;padding:14px;font-size:15px;font-family:inherit" onclick="claimAndDeploy()">Claim 100 AGN & Get Node Key</button>
+      <p style="font-size:11px;color:#334155;margin-top:12px">Key generated in your browser. Nothing sent to server except your address.</p>
     </div>
   </div>
+
+  <!-- Step 2: Key ready -->
+  <div id="c-step2" style="display:none;max-width:480px;margin:0 auto">
+    <div class="card" style="border-color:#22c55e22">
+      <div style="color:#22c55e;font-size:13px;font-weight:700;margin-bottom:16px">✅ 100 AGN claimed successfully</div>
+      <div class="card-title">Your Address</div>
+      <div id="out-addr" style="font-size:12px;color:#38bdf8;word-break:break-all;margin:6px 0 16px;padding:10px;background:#020818;border-radius:6px;border:1px solid #1e293b"></div>
+      <div class="card-title">Private Key — Save This Now</div>
+      <div id="out-key" style="font-size:11px;color:#f59e0b;word-break:break-all;padding:10px;background:#020818;border-radius:6px;border:1px solid #1e293b;margin:6px 0 8px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="copybtn" style="flex:1;padding:8px" onclick="doCopyKey()">📋 Copy Key</button>
+        <button class="copybtn" style="flex:1;padding:8px" onclick="doDownloadKey()">💾 Download Key</button>
+      </div>
+      <div style="font-size:11px;color:#ef4444;padding:8px 12px;background:#1a0a0a;border-radius:6px;border:1px solid #3f1212">
+        ⚠️ Store your private key safely. It cannot be recovered if lost.
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">Deploy Your Node — 3 Steps</div>
+      <div style="margin:12px 0">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">1</div>
+          <div style="font-size:12px;color:#94a3b8">Click <b style="color:#e2e8f0">Deploy on Railway</b> below</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">2</div>
+          <div style="font-size:12px;color:#94a3b8">Paste your private key as <code style="color:#38bdf8;background:#0a0e1a;padding:1px 5px;border-radius:3px">AGENT_PRIVATE_KEY</code></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">3</div>
+          <div style="font-size:12px;color:#94a3b8">Click Deploy → your node starts earning AGN every 24h</div>
+        </div>
+      </div>
+      <a class="cbtn" style="display:block;text-align:center;background:#7c3aed;text-decoration:none;padding:12px;font-size:14px" href="https://railway.app/new/github?repo=agn-protocol/agnet" target="_blank">🚀 Deploy on Railway</a>
+      <p style="font-size:11px;color:#334155;text-align:center;margin-top:10px">Free tier available · No credit card required</p>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="c-error" style="display:none;max-width:480px;margin:0 auto">
+    <div class="card" style="border-color:#ef444444">
+      <div style="color:#ef4444;font-size:13px;font-weight:700;margin-bottom:8px">❌ <span id="err-msg">Error</span></div>
+      <button class="cbtn" style="background:#1e293b;color:#e2e8f0;margin-top:8px;font-family:inherit" onclick="resetConnect()">Try Again</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- Economy -->
@@ -259,6 +262,7 @@ async function loadStats() {
     document.getElementById("s-gen").textContent = g.claimed;
     document.getElementById("g-rem").textContent = g.remaining;
     document.getElementById("gen-slots").textContent = g.remaining;
+    document.getElementById("slots-left").textContent = g.remaining;
     document.getElementById("gen-tag").textContent = g.remaining + " slots remaining";
   } catch(e) {
     document.querySelector(".live").style.color="#ef4444";
@@ -372,6 +376,72 @@ function showTab(name) {
   document.querySelectorAll(".panel").forEach((p,i) => p.classList.toggle("active", names[i]===name));
   if(name==="nodes") loadNodes();
   if(name==="market") loadMarket();
+}
+
+// ── One-click onboarding ──────────────────────────────────────────────────────
+
+let _privKey = null, _address = null;
+
+function b32(bytes) {
+  const a = 'abcdefghijklmnopqrstuvwxyz234567';
+  let bits = 0, val = 0, out = '';
+  for (const b of bytes) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += a[(val >>> (bits-5)) & 31]; bits -= 5; } }
+  return out;
+}
+function toHex(buf) { return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+async function generateAgnetKey() {
+  // Generate Ed25519 via WebCrypto (Chrome 113+, Firefox 119+, Safari 17+)
+  const kp = await crypto.subtle.generateKey({name:'Ed25519'}, true, ['sign','verify']);
+  const pubRaw = await crypto.subtle.exportKey('raw', kp.publicKey);
+  const privPkcs8 = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  // PKCS8 Ed25519 = 16-byte header + 32-byte key
+  const privBytes = new Uint8Array(privPkcs8).slice(16);
+  const pubBytes = new Uint8Array(pubRaw);
+  const hashBuf = await crypto.subtle.digest('SHA-256', pubBytes);
+  const addr = 'agnet1' + b32(new Uint8Array(hashBuf).slice(0, 20));
+  return { priv: toHex(privBytes.buffer), pub: toHex(pubRaw), address: addr };
+}
+
+async function claimAndDeploy() {
+  const btn = document.getElementById('claim-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating key…';
+  try {
+    const kp = await generateAgnetKey();
+    btn.textContent = 'Claiming genesis…';
+    const resp = await fetch(NODE+'/stake', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({address:kp.address, amount_nagn:10000000, participant_type:1, genesis:true})
+    }).then(r=>r.json());
+    if (resp.detail || resp.error) throw new Error(resp.detail || resp.error);
+    _privKey = kp.priv; _address = kp.address;
+    document.getElementById('out-addr').textContent = kp.address;
+    document.getElementById('out-key').textContent = kp.priv;
+    document.getElementById('c-step1').style.display = 'none';
+    document.getElementById('c-step2').style.display = 'block';
+  } catch(e) {
+    document.getElementById('err-msg').textContent = e.message || String(e);
+    document.getElementById('c-step1').style.display = 'none';
+    document.getElementById('c-error').style.display = 'block';
+  }
+}
+
+function doCopyKey() {
+  navigator.clipboard.writeText(_privKey||'').catch(()=>{});
+  const b = document.querySelectorAll('#c-step2 .copybtn')[0];
+  b.textContent = '✅ Copied!'; setTimeout(()=>b.textContent='📋 Copy Key', 2000);
+}
+function doDownloadKey() {
+  const blob = new Blob([JSON.stringify({address:_address,private_key:_privKey},null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agnet-key.json'; a.click();
+}
+function resetConnect() {
+  document.getElementById('c-step1').style.display='block';
+  document.getElementById('c-step2').style.display='none';
+  document.getElementById('c-error').style.display='none';
+  const btn=document.getElementById('claim-btn'); btn.disabled=false; btn.textContent='Claim 100 AGN & Get Node Key';
 }
 
 function copyCode(btn) {
