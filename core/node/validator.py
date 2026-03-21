@@ -16,7 +16,7 @@ from core.node.tx import Transaction, TxType
 TIMESTAMP_PAST_WINDOW_MS = 60_000   # 60 seconds back
 TIMESTAMP_FUTURE_WINDOW_MS = 5_000  # 5 seconds forward
 
-VALID_COMMANDS = {"rotate_key"}
+VALID_COMMANDS = {"rotate_key", "offer", "request", "rating"}
 
 
 class DAGStore(Protocol):
@@ -180,6 +180,6 @@ class Validator:
     def _is_valid_command(self, memo: str) -> bool:
         """Check if memo contains a known command."""
         for cmd in VALID_COMMANDS:
-            if memo.startswith(f"{cmd}:"):
+            if memo.startswith(f"{cmd}:") or memo.startswith(f"{cmd}|"):
                 return True
         return False
