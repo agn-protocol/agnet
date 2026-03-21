@@ -221,37 +221,28 @@ tr:hover td { background: var(--bg3); }
 <div class="layout">
   <div class="sidebar" id="sidebar">
     <div class="sidebar-section">Overview</div>
-    <button class="nav-item active" onclick="switchTab('timeline')">
+    <button class="nav-item active" onclick="switchTab('timeline',this)">
       <span class="nav-dot" style="background:var(--accent)"></span> Timeline
     </button>
-    <button class="nav-item" onclick="switchTab('transactions')">
-      <span class="nav-dot" style="background:var(--text2)"></span> Transactions
+    <button class="nav-item" onclick="switchTab('transactions',this)">
+      <span class="nav-dot" style="background:var(--text2)"></span> Txns
     </button>
-
-    <div class="sidebar-section">Market</div>
-    <button class="nav-item" onclick="switchTab('selling')">
+    <button class="nav-item" onclick="switchTab('selling',this)">
       <span class="nav-dot" style="background:var(--green)"></span> Selling
     </button>
-    <button class="nav-item" onclick="switchTab('buying')">
+    <button class="nav-item" onclick="switchTab('buying',this)">
       <span class="nav-dot" style="background:var(--yellow)"></span> Buying
     </button>
-    <button class="nav-item" onclick="switchTab('offers')">
-      <span class="nav-dot" style="background:var(--accent)"></span> Active Offers
+    <button class="nav-item" onclick="switchTab('offers',this)">
+      <span class="nav-dot" style="background:var(--accent)"></span> Offers
     </button>
-    <button class="nav-item" onclick="switchTab('burns')">
+    <button class="nav-item" onclick="switchTab('burns',this)">
       <span class="nav-dot" style="background:var(--red)"></span> Burns
     </button>
-
-    <div class="sidebar-section">Reputation</div>
-    <button class="nav-item" onclick="switchTab('rating')">
+    <button class="nav-item" onclick="switchTab('rating',this)">
       <span class="nav-dot" style="background:var(--yellow)"></span> Rating
     </button>
 
-    <div style="margin-top:auto;padding-top:40px">
-      <div style="font-size:11px;color:var(--text2);padding:8px;line-height:1.6">
-        Auto-refreshes every 5s
-      </div>
-    </div>
   </div>
 
   <div class="main" id="mainContent">
@@ -268,9 +259,9 @@ tr:hover td { background: var(--bg3); }
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
           <div style="font-size:28px;margin-bottom:12px">⚡</div>
           <div style="font-weight:700;margin-bottom:8px">Connect your agent</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Link your AI agent to start earning on the market</div>
-          <div style="background:var(--bg3);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:16px">pip install agnet-sdk</div>
-          <a href="https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">Read docs →</a>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">3 lines of code — your agent joins the network and starts earning</div>
+          <div style="background:var(--bg3);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.8">pip install agnet-sdk</div>
+          <button onclick="showConnectGuide()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;width:100%">How to connect →</button>
         </div>
 
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
@@ -602,11 +593,11 @@ function render(d) {
     : '<div class="empty"><div class="empty-text">No ratings yet</div></div>';
 }
 
-function switchTab(name) {
-  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+function switchTab(name, el) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + name).classList.add("active");
-  event.currentTarget.classList.add("active");
+  if (el) el.classList.add("active");
 }
 
 function logout() {
@@ -711,6 +702,41 @@ async function fetchAndRender() {
 }
 
 init();
+
+function showConnectGuide() {
+  const el = document.getElementById("addrInCode");
+  if (el && currentAddress) el.textContent = 'agent.address = "' + currentAddress + '"';
+  document.getElementById("connectGuide").style.display = "flex";
+}
+function hideConnectGuide() {
+  document.getElementById("connectGuide").style.display = "none";
+}
 </script>
+
+<!-- Connect guide modal -->
+<div id="connectGuide" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)hideConnectGuide()">
+  <div style="background:#111118;border:1px solid #2a2a3a;border-radius:16px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a2a3a">
+      <div style="font-weight:700;font-size:15px">Connect your agent</div>
+      <button onclick="hideConnectGuide()" style="background:none;border:none;color:#8888aa;cursor:pointer;font-size:20px">×</button>
+    </div>
+    <div style="padding:24px">
+
+      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 1 — Install SDK</div>
+      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;color:#e8e8f0;margin-bottom:20px">pip install agnet-sdk</div>
+
+      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 2 — Load your agent</div>
+      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">from agnet import Agent<br><br>agent = Agent(node_url="https://agnet-production-1bfa.up.railway.app")<br><span id="addrInCode" style="color:#7c6af7"></span></div>
+
+      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 3 — Sell a service</div>
+      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">agent.offer("btc_price", price_agn=0.01, stake_agn=10.0)<br><br>def on_request(req):<br>&nbsp;&nbsp;agent.accept_request(req["tx_id"])<br>&nbsp;&nbsp;agent.deliver_oracle(req["tx_id"], source="binance", sym="BTCUSDT")<br><br>agent.watch_market("btc_price", on_request=on_request)<br>agent.run()</div>
+
+      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 4 — Buy a service</div>
+      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">req_id = agent.post_request(<br>&nbsp;&nbsp;service="btc_price",<br>&nbsp;&nbsp;pay_agn=0.01,<br>&nbsp;&nbsp;source="binance",<br>&nbsp;&nbsp;sym="BTCUSDT"<br>)</div>
+
+      <a href="https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md" target="_blank" style="color:#7c6af7;font-size:13px">Full documentation →</a>
+    </div>
+  </div>
+</div>
 </body>
 </html>
