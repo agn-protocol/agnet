@@ -31,6 +31,13 @@ HALVING_INTERVAL_EPOCHS = 365 * 4
 GENESIS_REWARD_NAGN = 100 * 1_000_000
 GENESIS_MAX_NODES = 100
 
+# ── Governance parameter: minimum base emission ────────────────────────────────
+# After main supply (1B AGN) is fully distributed through halving cycles,
+# the network continues emitting this amount per epoch to permanently
+# incentivize validators. Default: 1 AGN/epoch (~365 AGN/year total).
+# Can be updated via network governance vote stored in distribution_state.
+DEFAULT_MIN_BASE_EMISSION_NAGN = 1 * 1_000_000  # 1 AGN per epoch
+
 
 class DistributionContract:
     def __init__(self, db=None):
@@ -60,7 +67,12 @@ class DistributionContract:
 
     def _ensure_state(self, conn):
         cur = conn.cursor()
-        for key, val in [("total_distributed", "0"), ("genesis_count", "0"), ("launch_time", str(int(time.time())))]:
+        for key, val in [
+            ("total_distributed", "0"),
+            ("genesis_count", "0"),
+            ("launch_time", str(int(time.time()))),
+            ("min_base_emission_nagn", str(DEFAULT_MIN_BASE_EMISSION_NAGN)),
+        ]:
             cur.execute(f"INSERT INTO distribution_state (key, value) VALUES ({P},{P}) ON CONFLICT(key) DO NOTHING", (key, val))
         conn.commit()
 
@@ -111,9 +123,19 @@ class DistributionContract:
         launch_time = int(self._get_state("launch_time"))
         return (int(time.time()) - launch_time) // EPOCH_DURATION_SECONDS
 
+    def min_base_emission(self) -> int:
+        """Current minimum base emission per epoch (governance parameter)."""
+        return int(self._get_state("min_base_emission_nagn") or DEFAULT_MIN_BASE_EMISSION_NAGN)
+
+    def set_min_base_emission(self, nagn: int) -> None:
+        """Update minimum base emission. Called by governance vote."""
+        self._set_state("min_base_emission_nagn", str(max(0, nagn)))
+
     def epoch_reward(self, epoch):
         halvings = epoch // HALVING_INTERVAL_EPOCHS
-        return max(BASE_REWARD_NAGN >> halvings, 1)
+        halving_reward = BASE_REWARD_NAGN >> halvings
+        # Floor is governance parameter, not zero — keeps validators incentivised forever
+        return max(halving_reward, self.min_base_emission())
 
     def distribute_epoch(self, epoch, validator_stats):
         conn = get_conn()
@@ -127,8 +149,14 @@ class DistributionContract:
             return {}
         reward = self.epoch_reward(epoch)
         total = int(self._get_state("total_distributed"))
-        if total + reward > TOTAL_SUPPLY_NAGN:
-            reward = TOTAL_SUPPLY_NAGN - total
+        min_emission = self.min_base_emission()
+        # Main supply cap applies only to halving rewards.
+        # Base emission (floor) continues beyond 1B supply — this is the
+        # perpetual network sustainability mechanism.
+        halving_reward = max(BASE_REWARD_NAGN >> (epoch // HALVING_INTERVAL_EPOCHS), 0)
+        if halving_reward > 0 and total + halving_reward > TOTAL_SUPPLY_NAGN:
+            # Main supply nearly exhausted — switch to base emission only
+            reward = min_emission
         if reward <= 0:
             return {}
         total_tx = sum(validator_stats.values())
@@ -160,12 +188,17 @@ class DistributionContract:
         return TOTAL_SUPPLY_NAGN - self.total_distributed()
 
     def stats(self):
+        epoch = self.current_epoch()
+        total = self.total_distributed()
         return {
-            "current_epoch": self.current_epoch(),
-            "epoch_reward_nagn": self.epoch_reward(self.current_epoch()),
-            "total_distributed_nagn": self.total_distributed(),
+            "current_epoch": epoch,
+            "epoch_reward_nagn": self.epoch_reward(epoch),
+            "total_distributed_nagn": total,
             "remaining_supply_nagn": self.remaining_supply(),
             "genesis_open": self.genesis_open(),
             "genesis_count": self.genesis_count(),
             "genesis_max": GENESIS_MAX_NODES,
+            "min_base_emission_nagn": self.min_base_emission(),
+            "min_base_emission_agn": self.min_base_emission() / 1_000_000,
+            "main_supply_exhausted": total >= TOTAL_SUPPLY_NAGN,
         }

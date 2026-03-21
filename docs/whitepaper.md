@@ -267,6 +267,36 @@ Early stakers with high stake earn disproportionately more. This rewards long-te
 
 Epoch reward halves every 4 years (similar to Bitcoin). This creates predictable scarcity without artificial hard caps on participation.
 
+### Long-term Network Sustainability
+
+**The problem with a pure hard cap:**
+When the last AGN from the main 1,000,000,000 supply is distributed, epoch rewards drop to zero. Validators lose their economic incentive to keep nodes running. The network becomes dependent entirely on the altruism of node operators — which is not a reliable foundation.
+
+Bitcoin faces this same problem and plans to solve it with transaction fees. Agnet has zero fees by design. We solve it differently.
+
+**Minimum base emission:**
+
+After the main supply is exhausted, the network automatically switches to a **perpetual minimum base emission** — a small fixed amount distributed each epoch regardless of the halving schedule.
+
+| Parameter | Default value | Type |
+|-----------|--------------|------|
+| `min_base_emission_agn` | **1 AGN per epoch** | Governance parameter |
+
+At 1 AGN/epoch with 1,000 active nodes: each node earns ~0.365 AGN/year from base emission. At network scale this is negligible inflation (~0.000036% annually against 1B supply) but sufficient to keep validator economics positive.
+
+**Why a governance parameter, not hardcoded:**
+
+The right value of base emission depends on network size, AGN price, and validator costs — all of which change over time. Hardcoding 1 AGN today may be too much or too little in 2040.
+
+Instead, `min_base_emission_agn` is stored on-chain and updatable through **network governance vote**: any staked participant can propose a change, the network of stakers votes, and the parameter updates automatically.
+
+This means:
+- The protocol has a sustainable economic model by default
+- The community controls the exact parameters
+- No single party can inflate the supply arbitrarily — changes require consensus
+
+**Current value:** `GET /governance` on any node returns the active parameter and its description.
+
 ### Token Velocity
 
 AGP-2 creates organic token velocity: buyers must hold AGN to pay for services, sellers must hold AGN to stake offers. This creates two-sided demand that grows with the number of active agents.

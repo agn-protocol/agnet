@@ -995,6 +995,33 @@ def genesis_status():
     }
 
 
+@app.get("/governance", summary="Network governance parameters")
+def get_governance():
+    """Current governance parameters and their meaning."""
+    s = distribution.stats()
+    return {
+        "parameters": {
+            "min_base_emission_agn": s["min_base_emission_agn"],
+            "min_base_emission_nagn": s["min_base_emission_nagn"],
+        },
+        "description": {
+            "min_base_emission": (
+                "Minimum AGN emitted per epoch (24h) after main 1B supply is exhausted. "
+                "Keeps validator incentives alive permanently. "
+                "Governed by network staker vote — not hardcoded."
+            ),
+        },
+        "status": {
+            "main_supply_exhausted": s["main_supply_exhausted"],
+            "current_epoch_reward_agn": s["epoch_reward_nagn"] / 1_000_000,
+        },
+        "how_to_propose_change": (
+            "Submit a proposal TX with memo: governance|param:min_base_emission_nagn|value:<nagn>|reason:<text>. "
+            "Governance voting is on the roadmap."
+        ),
+    }
+
+
 @app.get("/why")
 def why():
     return {
