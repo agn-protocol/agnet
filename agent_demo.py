@@ -95,6 +95,14 @@ def run_seller(kp):
         print("[SELLER] Claiming genesis...", flush=True)
         claim_genesis(kp.address)
         time.sleep(3)
+    # Publish AGP-2 offer
+    for service, price in [("market:btc:usd","1000"), ("market:eur:usd","500"), ("market:oil:wti","500")]:
+        memo = f"offer|{service}|price:{price}|stake:10000000"
+        send(kp, kp.address, 0, memo, int(time.time()*1000))
+        time.sleep(1)
+    print(f"[SELLER] Published AGP-2 offers", flush=True)
+
+    nonce = int(time.time() * 1000) + 100
     while True:
         bal = balance(kp.address)
         data = fetch_market_data()
@@ -128,8 +136,19 @@ def run_buyer(kp):
             continue
         memo, label = requests[i % len(requests)]
         print(f"[BUYER] Buying {label}...", flush=True)
+        # Publish AGP-2 request
+        req_memo = f"request|need:{memo}|pay:2000|deadline:3"
+        send(kp, kp.address, 0, req_memo, nonce)
+        nonce += 1
+        time.sleep(1)
+        # Pay seller
         tx_id = send(kp, SELLER_ADDRESS, 0.001, memo, nonce)
         nonce += 1
+        # Publish rating
+        if tx_id:
+            rating_memo = f"rating|tx:{str(tx_id)[:8]}|result:ok"
+            send(kp, kp.address, 0, rating_memo, nonce)
+            nonce += 1
         print(f"[BUYER] Paid 0.001 AGN for {label} | TX: {str(tx_id)[:16]}... | Balance: {balance(kp.address)} AGN", flush=True)
         i += 1
         time.sleep(30)
