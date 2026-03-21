@@ -36,6 +36,114 @@ validator = Validator(dag=dag)
 known_peers: list[str] = dag.get_peers() or ["https://agnet-production-1bfa.up.railway.app"]
 
 
+# ─── AGP-2 Agent Market ────────────────────────────────────────────────────
+
+agp2_offers: dict = {}    # address -> {service, price, stake, ts}
+agp2_requests: dict = {}  # tx_id -> {service, pay, deadline, buyer, ts}
+agp2_ratings: dict = {}   # address -> {ok: int, fail: int}
+
+def _parse_agp2_memo(tx):
+    """Parse AGP-2 memo records: offer|request|rating"""
+    memo = tx.memo.strip() if tx.memo else ""
+    if not memo:
+        return
+    parts = memo.split("|")
+    if len(parts) < 2:
+        return
+    record_type = parts[0].lower()
+
+    if record_type == "offer" and len(parts) >= 3:
+        service = parts[1]
+        price = 0
+        stake = 0
+        for p in parts[2:]:
+            if p.startswith("price:"):
+                try: price = int(p.split(":")[1])
+                except: pass
+            if p.startswith("stake:"):
+                try: stake = int(p.split(":")[1])
+                except: pass
+        agp2_offers[tx.sender] = {
+            "address": tx.sender,
+            "service": service,
+            "price_nagn": price,
+            "stake_nagn": stake,
+            "timestamp": tx.timestamp,
+            "tx_id": tx.id
+        }
+
+    elif record_type == "request" and len(parts) >= 2:
+        service = ""
+        pay = 0
+        deadline = 3
+        for p in parts[1:]:
+            if p.startswith("need:"):
+                service = p[5:]
+            elif p.startswith("pay:"):
+                try: pay = int(p.split(":")[1])
+                except: pass
+            elif p.startswith("deadline:"):
+                try: deadline = int(p.split(":")[1])
+                except: pass
+        agp2_requests[tx.id] = {
+            "tx_id": tx.id,
+            "buyer": tx.sender,
+            "service": service,
+            "pay_nagn": pay,
+            "deadline_sec": deadline,
+            "timestamp": tx.timestamp
+        }
+
+    elif record_type == "rating" and len(parts) >= 3:
+        result = "ok"
+        for p in parts[1:]:
+            if p.startswith("result:"):
+                result = p[7:].lower()
+        if tx.sender not in agp2_ratings:
+            agp2_ratings[tx.sender] = {"ok": 0, "fail": 0, "address": tx.sender}
+        if result == "ok":
+            agp2_ratings[tx.sender]["ok"] += 1
+        else:
+            agp2_ratings[tx.sender]["fail"] += 1
+
+
+@app.get("/offers", summary="AGP-2 active offers")
+async def get_offers():
+    """List all agent service offers."""
+    return {"offers": list(agp2_offers.values()), "count": len(agp2_offers)}
+
+
+@app.get("/requests", summary="AGP-2 active requests")
+async def get_requests():
+    """List all pending buy requests."""
+    return {"requests": list(agp2_requests.values()), "count": len(agp2_requests)}
+
+
+@app.get("/ratings/{address}", summary="AGP-2 agent reputation")
+async def get_ratings(address: str):
+    """Get agent reputation from rating transactions."""
+    r = agp2_ratings.get(address, {"ok": 0, "fail": 0, "address": address})
+    total = r["ok"] + r["fail"]
+    score = round(r["ok"] / total * 100, 1) if total > 0 else None
+    return {**r, "total": total, "score_pct": score}
+
+
+@app.get("/agp2/market", summary="AGP-2 market overview")
+async def get_agp2_market():
+    """Full AGP-2 market state: offers, requests, top agents."""
+    top = sorted(agp2_ratings.values(), key=lambda x: x["ok"], reverse=True)[:10]
+    return {
+        "offers": list(agp2_offers.values()),
+        "requests": list(agp2_requests.values()),
+        "top_agents": top,
+        "stats": {
+            "total_offers": len(agp2_offers),
+            "total_requests": len(agp2_requests),
+            "total_rated_agents": len(agp2_ratings)
+        }
+    }
+
+
 # ─── Background tasks ─────────────────────────────────────────────────────────
 
 async def epoch_loop():
@@ -171,6 +279,10 @@ async def submit_tx(body: TxSubmit):
     inserted = dag.insert_tx(tx)
     if not inserted:
         return {"status": "already_known", "id": tx.id}
+
+    # AGP-2: parse memo for market records
+    if tx.memo:
+        _parse_agp2_memo(tx)
 
     # Broadcast to peers asynchronously
     asyncio.create_task(_broadcast_tx(body.tx_json))
