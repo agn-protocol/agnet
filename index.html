@@ -776,6 +776,7 @@ footer {
   .tab-btn { padding: 8px 10px !important; font-size: 11px !important; }
   .code-block { font-size: 11px !important; }
   .container { padding: 0 16px; }
+  .faq-grid { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 480px) {
   .tab-btn { padding: 6px 8px !important; font-size: 10px !important; }
@@ -891,9 +892,11 @@ footer {
         <div style="font-size:28px;margin-bottom:8px">🤖</div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:4px;word-break:break-all" id="demo-buyer-addr">Loading...</div>
         <div style="font-size:12px;color:var(--text2);margin-top:8px">Buys real market data</div>
-        <div style="margin-top:12px">
-          <div style="font-size:11px;color:var(--text3)">Balance</div>
-          <div style="font-family:var(--mono);font-size:20px;color:var(--purple);font-weight:700" id="demo-buyer-bal">—</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">Last deal: <span id="demo-buyer-deal1" style="color:var(--purple)">—</span></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">Paid: <span id="demo-buyer-deal2" style="color:var(--purple)">—</span></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">From: <span id="demo-buyer-deal3" style="color:var(--purple)">—</span></div>
+          <div style="font-size:11px;color:var(--text3)">Balance: <span id="demo-buyer-bal" style="color:var(--purple);font-weight:700">—</span></div>
         </div>
       </div>
 
@@ -1123,7 +1126,7 @@ footer {
           <h3 style="font-size:22px;color:var(--text);margin-bottom:10px">Run a Node — Earn AGN Every 24h</h3>
           <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:8px">Deploy your node. Validate transactions. Earn AGN rewards automatically every 24 hours.</p>
           <p style="font-size:13px;color:var(--gold);margin-bottom:28px">🎁 Genesis: first 100 nodes get 100 AGN free — <b id="site-slots">?</b> slots left</p>
-          <button id="site-claim-btn" onclick="siteClaimAndDeploy()" style="background:var(--accent);color:var(--bg);border:none;padding:14px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;font-family:var(--sans)">Claim 100 AGN & Get Node Key</button>
+          <button id="site-claim-btn" onclick="siteClaimAndDeploy()" style="background:var(--accent);color:var(--bg);border:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--sans);letter-spacing:0.3px">Claim 100 AGN & Get Node Key</button>
           <p style="font-size:11px;color:var(--text3);margin-top:12px">Key generated in your browser · Private key never leaves your device</p>
         </div>
       </div>
@@ -1192,27 +1195,6 @@ uvicorn core.node.main:app --host 0.0.0.0 --port 8000</div>
       </div>
 
     </div>
-  </div>
-</section>
-
-<hr class="divider">
-
-<!-- EXPLORER -->
-<section id="explorer">
-  <div class="container" style="text-align:center">
-    <div class="section-tag">Explorer</div>
-    <h2 class="section-title">Network activity</h2>
-    <p class="section-sub">Live transactions, nodes, wallet balances and AGP-2 market.</p>
-    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:32px">
-      <a href="https://agn-protocol.github.io/agnet/explorer/" target="_blank" class="btn-primary">Open Explorer →</a>
-      <a href="https://agn-protocol.github.io/agnet/explorer/?tab=market" target="_blank" class="btn-secondary">View Market</a>
-    </div>
-    <!-- Hidden stat elements for JS compatibility -->
-    <span id="e-tx" style="display:none"></span>
-    <span id="e-addr" style="display:none"></span>
-    <span id="e-gen" style="display:none"></span>
-    <span id="e-reward" style="display:none"></span>
-    <span id="e-dist" style="display:none"></span>
   </div>
 </section>
 
@@ -1391,7 +1373,7 @@ print(f"Claimed: {resp}")</div>
     <div class="section-tag">FAQ</div>
     <h2 class="section-title">Common questions</h2>
 
-    <div style="display:flex;flex-direction:column;gap:12px;max-width:800px">
+    <div class="faq-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
 
       <div class="card">
         <h4 style="margin-bottom:8px">If an agent spends all my money — who is responsible?</h4>
@@ -1591,6 +1573,16 @@ async function loadDemo() {
     document.getElementById("demo-seller-bal").textContent = sb.balance_agn.toFixed(3) + " AGN";
     document.getElementById("demo-buyer-bal").textContent = bb.balance_agn.toFixed(3) + " AGN";
 
+    // Update buyer's last deal from real txs
+    const txd = await fetch(`${NODE}/txs?limit=10`).then(r=>r.json());
+    const deals = (txd.txs || []).filter(t => t.amount_agn > 0);
+    if (deals.length > 0) {
+      const last = deals[0];
+      document.getElementById("demo-buyer-deal1").textContent = last.memo ? last.memo.slice(0,16) : "payment";
+      document.getElementById("demo-buyer-deal2").textContent = last.amount_agn.toFixed(6) + " AGN";
+      document.getElementById("demo-buyer-deal3").textContent = shortAddr(last.sender);
+    }
+
     // Load real market prices from our node (avoids CORS issues)
     try {
       const market = await fetch(`${NODE}/market`).then(r=>r.json());
@@ -1644,7 +1636,7 @@ style.textContent = `@keyframes fadeIn { from { opacity:0; transform:translateY(
 document.head.appendChild(style);
 
 loadDemo();
-setInterval(loadDemo, 15000);
+setInterval(loadDemo, 2000);
 
 // ─── One-click claim ──────────────────────────────────────
 let _sitePrivKey = null, _siteAddress = null;
