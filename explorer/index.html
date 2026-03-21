@@ -200,23 +200,45 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
       </div>
     </div>
     <div class="card" style="margin-top:12px">
-      <div class="card-title">Deploy Your Node — 3 Steps</div>
-      <div style="margin:12px 0">
-        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
-          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">1</div>
-          <div style="font-size:12px;color:#94a3b8">Click <b style="color:#e2e8f0">Deploy on Railway</b> below</div>
+      <div class="card-title">Deploy Your Node</div>
+      <p style="font-size:12px;color:#64748b;margin:8px 0 14px">Choose any platform. Set <code style="color:#38bdf8;background:#0a0e1a;padding:1px 5px;border-radius:3px">AGENT_PRIVATE_KEY</code> = your key above.</p>
+
+      <!-- Railway -->
+      <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <b style="font-size:13px;color:#e2e8f0">Railway</b>
+          <span style="font-size:10px;color:#22c55e;background:#052e16;padding:2px 8px;border-radius:4px">Free tier</span>
         </div>
-        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
-          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">2</div>
-          <div style="font-size:12px;color:#94a3b8">Paste your private key as <code style="color:#38bdf8;background:#0a0e1a;padding:1px 5px;border-radius:3px">AGENT_PRIVATE_KEY</code></div>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
-          <div style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">3</div>
-          <div style="font-size:12px;color:#94a3b8">Click Deploy → your node starts earning AGN every 24h</div>
-        </div>
+        <p style="font-size:11px;color:#64748b;margin-bottom:10px">One click, no server needed</p>
+        <a class="cbtn" style="display:block;text-align:center;background:#7c3aed;text-decoration:none;padding:10px" href="https://railway.app/new/github?repo=agn-protocol/agnet" target="_blank">Deploy on Railway →</a>
       </div>
-      <a class="cbtn" style="display:block;text-align:center;background:#7c3aed;text-decoration:none;padding:12px;font-size:14px" href="https://railway.app/new/github?repo=agn-protocol/agnet" target="_blank">🚀 Deploy on Railway</a>
-      <p style="font-size:11px;color:#334155;text-align:center;margin-top:10px">Free tier available · No credit card required</p>
+
+      <!-- Docker -->
+      <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <b style="font-size:13px;color:#e2e8f0">Docker</b>
+          <span style="font-size:10px;color:#38bdf8;background:#0c1a2e;padding:2px 8px;border-radius:4px">Any VPS</span>
+        </div>
+        <p style="font-size:11px;color:#64748b;margin-bottom:8px">Works on any server with Docker</p>
+        <div class="cblock" style="font-size:11px;margin:0">docker run -e AGENT_PRIVATE_KEY=<span id="docker-key" style="color:#f59e0b">YOUR_KEY</span> \
+  -p 8000:8000 ghcr.io/agn-protocol/agnet:latest</div>
+        <button class="copybtn" style="margin-top:6px" onclick="copyDockerCmd()">Copy</button>
+      </div>
+
+      <!-- Manual -->
+      <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <b style="font-size:13px;color:#e2e8f0">Manual</b>
+          <span style="font-size:10px;color:#94a3b8;background:#1e293b;padding:2px 8px;border-radius:4px">Python 3.10+</span>
+        </div>
+        <p style="font-size:11px;color:#64748b;margin-bottom:8px">Any machine with Python</p>
+        <div class="cblock" style="font-size:11px;margin:0">git clone https://github.com/agn-protocol/agnet
+cd agnet && pip install -r requirements.txt
+export AGENT_PRIVATE_KEY=<span id="manual-key" style="color:#f59e0b">YOUR_KEY</span>
+uvicorn core.node.main:app --host 0.0.0.0 --port 8000</div>
+        <button class="copybtn" style="margin-top:6px" onclick="copyManualCmd()">Copy</button>
+      </div>
+
     </div>
   </div>
 
@@ -419,6 +441,8 @@ async function claimAndDeploy() {
     _privKey = kp.priv; _address = kp.address;
     document.getElementById('out-addr').textContent = kp.address;
     document.getElementById('out-key').textContent = kp.priv;
+    document.getElementById('docker-key').textContent = kp.priv;
+    document.getElementById('manual-key').textContent = kp.priv;
     document.getElementById('c-step1').style.display = 'none';
     document.getElementById('c-step2').style.display = 'block';
   } catch(e) {
@@ -436,6 +460,14 @@ function doCopyKey() {
 function doDownloadKey() {
   const blob = new Blob([JSON.stringify({address:_address,private_key:_privKey},null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agnet-key.json'; a.click();
+}
+function copyDockerCmd() {
+  const cmd = `docker run -e AGENT_PRIVATE_KEY=${_privKey} -p 8000:8000 ghcr.io/agn-protocol/agnet:latest`;
+  navigator.clipboard.writeText(cmd).catch(()=>{});
+}
+function copyManualCmd() {
+  const cmd = `git clone https://github.com/agn-protocol/agnet\ncd agnet && pip install -r requirements.txt\nexport AGENT_PRIVATE_KEY=${_privKey}\nuvicorn core.node.main:app --host 0.0.0.0 --port 8000`;
+  navigator.clipboard.writeText(cmd).catch(()=>{});
 }
 function resetConnect() {
   document.getElementById('c-step1').style.display='block';
