@@ -819,7 +819,7 @@ footer {
     <a href="#whitepaper">Whitepaper</a>
     <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
     <a href="#claim" class="nav-cta">Claim Genesis →</a>
-    <button onclick="openAuth()" class="nav-cta" style="background:transparent;border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-size:13px;padding:6px 14px;border-radius:6px;font-family:inherit">Dashboard →</button>
+    <button onclick="openAuth()" class="nav-cta" style="background:var(--accent);color:#fff;border:none;cursor:pointer;font-family:inherit">My Account →</button>
   </div>
   <div class="hamburger" onclick="toggleMenu()">
     <span></span><span></span><span></span>
@@ -836,7 +836,7 @@ footer {
   <a href="#whitepaper" onclick="toggleMenu()">Whitepaper</a>
   <a href="https://github.com/agn-protocol/agnet" target="_blank" onclick="toggleMenu()">GitHub</a>
   <a href="#claim" onclick="toggleMenu()" style="color:var(--accent)">Claim Genesis →</a>
-  <a href="#" onclick="toggleMenu();openAuth()" style="color:var(--accent)">Dashboard →</a>
+  <a href="#" onclick="toggleMenu();openAuth()" style="color:var(--accent)">My Account →</a>
 </div>
 
 <!-- AUTH MODAL -->
@@ -845,7 +845,7 @@ footer {
 
     <!-- Modal header -->
     <div style="padding:24px 24px 0;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:#7c6af7">AGN Dashboard</div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:#7c6af7">AGN — My Account</div>
       <button onclick="closeAuth()" style="background:none;border:none;color:#8888aa;cursor:pointer;font-size:20px;line-height:1">×</button>
     </div>
 
@@ -935,7 +935,7 @@ footer {
 
   <div class="hero-btns">
     <a href="#claim" class="btn-primary">Claim 100 AGN Free →</a>
-    <a href="https://agn-protocol.github.io/agnet/explorer/" target="_blank" class="btn-secondary">View Explorer</a>
+    <button onclick="openAuth()" class="btn-primary" style="border:none;cursor:pointer;font-family:inherit">My Account →</button>
   </div>
 </section>
 
