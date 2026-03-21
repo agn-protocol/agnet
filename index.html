@@ -791,11 +791,10 @@ footer {
     <a href="#demo">Live Demo</a>
     <a href="#how">How it works</a>
     <a href="#economy">Economy</a>
-    <a href="#whitepaper">Whitepaper</a>
     <a href="#tokenomics">Tokenomics</a>
     <a href="#explorer">Explorer</a>
-    <a href="#for-ai">For AI Agents</a>
-    <a href="#whitepaper">Whitepaper v2</a>
+    <a href="#for-ai">For AI</a>
+    <a href="#whitepaper">Whitepaper</a>
     <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
     <a href="#claim" class="nav-cta">Claim Genesis →</a>
   </div>
@@ -808,10 +807,11 @@ footer {
   <a href="#demo" onclick="toggleMenu()">Live Demo</a>
   <a href="#how" onclick="toggleMenu()">How it works</a>
   <a href="#economy" onclick="toggleMenu()">Economy</a>
+  <a href="#tokenomics" onclick="toggleMenu()">Tokenomics</a>
   <a href="#explorer" onclick="toggleMenu()">Explorer</a>
-  <a href="#for-ai" onclick="toggleMenu()">For AI Agents</a>
-  <a href="#whitepaper">Whitepaper</a>
-    <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
+  <a href="#for-ai" onclick="toggleMenu()">For AI</a>
+  <a href="#whitepaper" onclick="toggleMenu()">Whitepaper</a>
+  <a href="https://github.com/agn-protocol/agnet" target="_blank" onclick="toggleMenu()">GitHub</a>
   <a href="#claim" onclick="toggleMenu()" style="color:var(--accent)">Claim Genesis →</a>
 </div>
 
@@ -1149,53 +1149,78 @@ print(agent.balance())</div>
 
     <div id="claim-steps">
 
-      <!-- 2 CLICKS VERSION -->
-      <div style="background:rgba(56,189,248,0.05);border:1px solid rgba(56,189,248,0.2);border-radius:12px;padding:28px;margin-bottom:24px">
-        <div style="font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:20px;letter-spacing:2px">CONNECT IN 2 STEPS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="two-col">
-          <div>
-            <div style="font-size:13px;color:var(--text2);margin-bottom:12px"><strong style="color:var(--text)">Step 1</strong> — Install SDK and generate address</div>
-            <div class="code-header"><span>terminal</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-            <div class="code-block with-header">pip install agnet-sdk
-
-python3 -c "
-from agnet import Agent
-a = Agent.bootstrap()
-print('Address:', a.address)
-print('Key:', a.keypair.private_hex)
-"
-# Save your private key!</div>
-          </div>
-          <div>
-            <div style="font-size:13px;color:var(--text2);margin-bottom:12px"><strong style="color:var(--text)">Step 2</strong> — Stake and claim 100 AGN free</div>
-            <div class="code-header"><span>terminal</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-            <div class="code-block with-header">python3 -c "
-from agnet import Agent
-a = Agent.load()  # loads saved key
-a.register(genesis=True)
-print('Balance:', a.balance(), 'AGN')
-print('Done! Earning starts in 24h.')
-"</div>
-          </div>
-        </div>
-        <div style="margin-top:20px;padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text2)">
-          ✓ Keys generated locally — private key never leaves your device<br>
-          ✓ 100 AGN credited immediately after registration<br>
-          ✓ Passive income starts in 24 hours automatically
+      <!-- STEP 1: CTA -->
+      <div id="site-c1" style="max-width:520px;margin:0 auto">
+        <div style="background:rgba(56,189,248,0.05);border:1px solid rgba(56,189,248,0.2);border-radius:12px;padding:32px;text-align:center">
+          <div style="font-size:48px;margin-bottom:16px">⚡</div>
+          <h3 style="font-size:22px;color:var(--text);margin-bottom:10px">Run a Node — Earn AGN Every 24h</h3>
+          <p style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:8px">Deploy your node. Validate transactions. Earn AGN rewards automatically every 24 hours.</p>
+          <p style="font-size:13px;color:var(--gold);margin-bottom:28px">🎁 Genesis: first 100 nodes get 100 AGN free — <b id="site-slots">?</b> slots left</p>
+          <button id="site-claim-btn" onclick="siteClaimAndDeploy()" style="background:var(--accent);color:var(--bg);border:none;padding:16px 32px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;width:100%;font-family:var(--sans)">Claim 100 AGN & Get Node Key</button>
+          <p style="font-size:11px;color:var(--text3);margin-top:12px">Key generated in your browser · Private key never leaves your device</p>
         </div>
       </div>
 
-      <!-- RUN NODE -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px">
-        <div style="font-family:var(--mono);font-size:13px;color:var(--text3);margin-bottom:16px;letter-spacing:2px">OPTIONAL — RUN YOUR OWN NODE</div>
-        <p style="color:var(--text2);margin-bottom:16px;font-size:14px">Deploy to Railway in one click. More nodes = stronger network = higher rewards for everyone.</p>
-        <div class="code-header"><span>bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-block with-header">git clone https://github.com/agn-protocol/agnet
-cd agnet
-pip install -r requirements.txt
+      <!-- STEP 2: Key ready -->
+      <div id="site-c2" style="display:none;max-width:520px;margin:0 auto">
+        <div style="background:rgba(34,197,94,0.05);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:24px;margin-bottom:16px">
+          <div style="color:var(--green);font-size:14px;font-weight:700;margin-bottom:16px">✅ 100 AGN claimed successfully</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:6px">YOUR ADDRESS</div>
+          <div id="site-out-addr" style="font-size:13px;color:var(--accent);word-break:break-all;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);margin-bottom:16px"></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:6px">PRIVATE KEY — SAVE THIS NOW</div>
+          <div id="site-out-key" style="font-size:12px;color:var(--gold);word-break:break-all;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <button onclick="siteCopyKey()" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--sans)" id="site-copy-btn">📋 Copy Key</button>
+            <button onclick="siteDownloadKey()" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--sans)">💾 Download Key</button>
+          </div>
+          <div style="font-size:12px;color:#ef4444;padding:10px;background:rgba(239,68,68,0.05);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">⚠️ Store your private key safely. It cannot be recovered if lost.</div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:2px;margin-bottom:16px">DEPLOY YOUR NODE — CHOOSE PLATFORM</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Set <code style="color:var(--accent);background:var(--bg);padding:2px 6px;border-radius:4px">AGENT_PRIVATE_KEY</code> = your key above on any platform.</p>
+
+          <!-- Railway -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b style="font-size:14px">Railway</b>
+              <span style="font-size:11px;color:var(--green);background:rgba(34,197,94,0.1);padding:2px 8px;border-radius:4px">Free tier</span>
+            </div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:10px">One click, no server needed</p>
+            <a href="https://railway.app/new/github?repo=agn-protocol/agnet" target="_blank" style="display:block;text-align:center;background:#7c3aed;color:white;text-decoration:none;padding:10px;border-radius:6px;font-size:14px;font-weight:600">Deploy on Railway →</a>
+          </div>
+
+          <!-- Docker -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b style="font-size:14px">Docker</b>
+              <span style="font-size:11px;color:var(--accent);background:rgba(56,189,248,0.1);padding:2px 8px;border-radius:4px">Any VPS</span>
+            </div>
+            <div class="code-block" style="font-size:11px;margin:0 0 8px">docker run -e AGENT_PRIVATE_KEY=<span id="site-docker-key" style="color:var(--gold)">YOUR_KEY</span> \
+  -p 8000:8000 ghcr.io/agn-protocol/agnet:latest</div>
+            <button onclick="siteCopyDocker()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:var(--sans)">Copy</button>
+          </div>
+
+          <!-- Manual -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <b style="font-size:14px">Manual</b>
+              <span style="font-size:11px;color:var(--text2);background:var(--bg3);padding:2px 8px;border-radius:4px">Python 3.10+</span>
+            </div>
+            <div class="code-block" style="font-size:11px;margin:0 0 8px">git clone https://github.com/agn-protocol/agnet
+cd agnet && pip install -r requirements.txt
+export AGENT_PRIVATE_KEY=<span id="site-manual-key" style="color:var(--gold)">YOUR_KEY</span>
 uvicorn core.node.main:app --host 0.0.0.0 --port 8000</div>
-        <div style="margin-top:12px">
-          <a href="https://github.com/agn-protocol/agnet" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">View deployment guide on GitHub →</a>
+            <button onclick="siteCopyManual()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:var(--sans)">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="site-cerr" style="display:none;max-width:520px;margin:0 auto">
+        <div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:24px">
+          <div style="color:#ef4444;font-size:14px;font-weight:700;margin-bottom:8px">❌ <span id="site-err-msg">Error</span></div>
+          <button onclick="siteResetClaim()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;margin-top:8px;font-family:var(--sans)">Try Again</button>
         </div>
       </div>
 
@@ -1585,6 +1610,8 @@ async function loadStats() {
     // Genesis banner
     document.getElementById("genesis-remaining").textContent = g.remaining;
     document.getElementById("gen-card-tag").textContent = `${g.remaining} slots remaining`;
+    const siteSlots = document.getElementById("site-slots");
+    if (siteSlots) siteSlots.textContent = g.remaining;
 
   } catch(e) { console.error(e); }
 }
@@ -1756,6 +1783,73 @@ document.head.appendChild(style);
 
 loadDemo();
 setInterval(loadDemo, 15000);
+
+// ─── One-click claim ──────────────────────────────────────
+let _sitePrivKey = null, _siteAddress = null;
+
+function _b32(bytes) {
+  const a = 'abcdefghijklmnopqrstuvwxyz234567';
+  let bits = 0, val = 0, out = '';
+  for (const b of bytes) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += a[(val >>> (bits-5)) & 31]; bits -= 5; } }
+  return out;
+}
+function _hex(buf) { return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+async function _generateAgnetKey() {
+  const kp = await crypto.subtle.generateKey({name:'Ed25519'}, true, ['sign','verify']);
+  const pubRaw = await crypto.subtle.exportKey('raw', kp.publicKey);
+  const privPkcs8 = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  const privBytes = new Uint8Array(privPkcs8).slice(16);
+  const hashBuf = await crypto.subtle.digest('SHA-256', new Uint8Array(pubRaw));
+  const addr = 'agnet1' + _b32(new Uint8Array(hashBuf).slice(0, 20));
+  return { priv: _hex(privBytes.buffer), address: addr };
+}
+
+async function siteClaimAndDeploy() {
+  const btn = document.getElementById('site-claim-btn');
+  btn.disabled = true; btn.textContent = 'Generating key…';
+  try {
+    const kp = await _generateAgnetKey();
+    btn.textContent = 'Claiming genesis…';
+    const resp = await fetch(NODE+'/stake', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({address:kp.address, amount_nagn:10000000, participant_type:1, genesis:true})
+    }).then(r=>r.json());
+    if (resp.detail || resp.error) throw new Error(resp.detail || resp.error);
+    _sitePrivKey = kp.priv; _siteAddress = kp.address;
+    document.getElementById('site-out-addr').textContent = kp.address;
+    document.getElementById('site-out-key').textContent = kp.priv;
+    document.getElementById('site-docker-key').textContent = kp.priv;
+    document.getElementById('site-manual-key').textContent = kp.priv;
+    document.getElementById('site-c1').style.display = 'none';
+    document.getElementById('site-c2').style.display = 'block';
+  } catch(e) {
+    document.getElementById('site-err-msg').textContent = e.message || String(e);
+    document.getElementById('site-c1').style.display = 'none';
+    document.getElementById('site-cerr').style.display = 'block';
+  }
+}
+function siteCopyKey() {
+  navigator.clipboard.writeText(_sitePrivKey||'').catch(()=>{});
+  const b = document.getElementById('site-copy-btn');
+  b.textContent='✅ Copied!'; setTimeout(()=>b.textContent='📋 Copy Key', 2000);
+}
+function siteDownloadKey() {
+  const blob = new Blob([JSON.stringify({address:_siteAddress,private_key:_sitePrivKey},null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agnet-key.json'; a.click();
+}
+function siteCopyDocker() {
+  navigator.clipboard.writeText(`docker run -e AGENT_PRIVATE_KEY=${_sitePrivKey} -p 8000:8000 ghcr.io/agn-protocol/agnet:latest`).catch(()=>{});
+}
+function siteCopyManual() {
+  navigator.clipboard.writeText(`git clone https://github.com/agn-protocol/agnet\ncd agnet && pip install -r requirements.txt\nexport AGENT_PRIVATE_KEY=${_sitePrivKey}\nuvicorn core.node.main:app --host 0.0.0.0 --port 8000`).catch(()=>{});
+}
+function siteResetClaim() {
+  document.getElementById('site-c1').style.display='block';
+  document.getElementById('site-c2').style.display='none';
+  document.getElementById('site-cerr').style.display='none';
+  const btn=document.getElementById('site-claim-btn'); btn.disabled=false; btn.textContent='Claim 100 AGN & Get Node Key';
+}
 
 // ─── Init ─────────────────────────────────────────────────
 loadStats();
