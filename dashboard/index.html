@@ -189,14 +189,23 @@ tr:hover td { background: var(--bg3); }
   /* Onboarding cards: 1 column */
   #onboarding > div:last-child { grid-template-columns: 1fr !important; }
 
-  /* Tables: horizontal scroll */
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { min-width: 500px; }
-  td, th { padding: 8px 10px; font-size: 11px; }
+  /* Tables → cards on mobile */
+  .table-wrap table, .table-wrap thead { display: none; }
+  .table-wrap { overflow: visible; }
+  .mob-cards { display: flex; flex-direction: column; gap: 8px; }
+  .mob-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .mob-card-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 12px; }
+  .mob-card-row:last-child { margin-bottom: 0; }
+  .mob-card-label { color: var(--text2); font-size: 11px; }
+  .mob-card-val { font-family: var(--mono); font-size: 12px; }
 
   /* Timeline */
   .tl-item { padding: 8px; }
   .tl-action { font-size: 12px; }
+
+  /* Connect guide modal */
+  #connectGuide > div { margin: 12px; max-height: 95vh; }
+  #connectGuide div[style*="font-family:monospace"] { font-size: 11px !important; overflow-x: auto; word-break: break-all; }
 }
 
 @media (max-width: 420px) {
@@ -328,6 +337,7 @@ tr:hover td { background: var(--bg3); }
             </tr></thead>
             <tbody id="txTable"></tbody>
           </table>
+          <div class="mob-cards" id="txCards"></div>
         </div>
       </div>
 
@@ -340,6 +350,7 @@ tr:hover td { background: var(--bg3); }
             </tr></thead>
             <tbody id="sellerTable"></tbody>
           </table>
+          <div class="mob-cards" id="sellerCards"></div>
         </div>
       </div>
 
@@ -352,6 +363,7 @@ tr:hover td { background: var(--bg3); }
             </tr></thead>
             <tbody id="buyerTable"></tbody>
           </table>
+          <div class="mob-cards" id="buyerCards"></div>
         </div>
       </div>
 
@@ -505,7 +517,8 @@ function render(d) {
   }).join("") || '<div class="empty"><div class="empty-text">No activity yet</div></div>';
 
   // Transactions table
-  document.getElementById("txTable").innerHTML = (d.transactions || []).map(tx =>
+  const txs = d.transactions || [];
+  document.getElementById("txTable").innerHTML = txs.map(tx =>
     `<tr>
       <td>${statusBadge(tx.direction)}</td>
       <td style="color:var(--text2)">${fmt(tx.counterpart)}</td>
@@ -514,9 +527,19 @@ function render(d) {
       <td style="color:var(--text2)">${fmtTime(tx.timestamp)}</td>
     </tr>`
   ).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:40px">No transactions</td></tr>';
+  document.getElementById("txCards").innerHTML = txs.length ? txs.map(tx =>
+    `<div class="mob-card">
+      <div class="mob-card-row"><span class="mob-card-label">Direction</span>${statusBadge(tx.direction)}</div>
+      <div class="mob-card-row"><span class="mob-card-label">Amount</span><span class="mob-card-val">${tx.direction==="in"?"+":"-"}${fmtAgn(tx.amount_agn)}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">From/To</span><span class="mob-card-val" style="color:var(--text2)">${fmt(tx.counterpart)}</span></div>
+      ${tx.memo ? `<div class="mob-card-row"><span class="mob-card-label">Memo</span><span class="mob-card-val" style="color:var(--text2);word-break:break-all">${tx.memo}</span></div>` : ""}
+      <div class="mob-card-row"><span class="mob-card-label">Time</span><span class="mob-card-val" style="color:var(--text2)">${fmtTime(tx.timestamp)}</span></div>
+    </div>`
+  ).join("") : '<div class="empty"><div class="empty-text">No transactions</div></div>';
 
-  // Seller table
-  document.getElementById("sellerTable").innerHTML = (d.deals_as_seller || []).map(deal =>
+  // Seller table + cards
+  const sellers = d.deals_as_seller || [];
+  document.getElementById("sellerTable").innerHTML = sellers.map(deal =>
     `<tr>
       <td style="color:var(--accent)">${deal.service}</td>
       <td style="color:var(--text2)">${fmt(deal.buyer)}</td>
@@ -526,9 +549,19 @@ function render(d) {
       <td style="color:var(--text2)">${fmtTime(deal.delivered_at)}</td>
     </tr>`
   ).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px">No deals as seller yet</td></tr>';
+  document.getElementById("sellerCards").innerHTML = sellers.length ? sellers.map(deal =>
+    `<div class="mob-card">
+      <div class="mob-card-row"><span class="mob-card-label">Service</span><span class="mob-card-val" style="color:var(--accent)">${deal.service}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Earned</span><span class="mob-card-val" style="color:var(--green)">+${fmtAgn(deal.pay_agn)}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Status</span>${statusBadge(deal.status)}</div>
+      <div class="mob-card-row"><span class="mob-card-label">Buyer</span><span class="mob-card-val" style="color:var(--text2)">${fmt(deal.buyer)}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Delivered</span><span class="mob-card-val" style="color:var(--text2)">${fmtTime(deal.delivered_at)}</span></div>
+    </div>`
+  ).join("") : '<div class="empty"><div class="empty-text">No deals as seller yet</div></div>';
 
-  // Buyer table
-  document.getElementById("buyerTable").innerHTML = (d.deals_as_buyer || []).map(deal =>
+  // Buyer table + cards
+  const buyers = d.deals_as_buyer || [];
+  document.getElementById("buyerTable").innerHTML = buyers.map(deal =>
     `<tr>
       <td style="color:var(--accent)">${deal.service}</td>
       <td style="color:var(--text2)">${fmt(deal.seller) || "—"}</td>
@@ -538,6 +571,15 @@ function render(d) {
       <td style="color:var(--text2)">${fmtTime(deal.posted_at)}</td>
     </tr>`
   ).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px">No purchases yet</td></tr>';
+  document.getElementById("buyerCards").innerHTML = buyers.length ? buyers.map(deal =>
+    `<div class="mob-card">
+      <div class="mob-card-row"><span class="mob-card-label">Service</span><span class="mob-card-val" style="color:var(--accent)">${deal.service}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Paid</span><span class="mob-card-val" style="color:var(--red)">-${fmtAgn(deal.pay_agn)}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Status</span>${statusBadge(deal.status)}</div>
+      <div class="mob-card-row"><span class="mob-card-label">Source</span><span class="mob-card-val" style="color:var(--text2)">${deal.source || "—"} ${deal.sym || ""}</span></div>
+      <div class="mob-card-row"><span class="mob-card-label">Posted</span><span class="mob-card-val" style="color:var(--text2)">${fmtTime(deal.posted_at)}</span></div>
+    </div>`
+  ).join("") : '<div class="empty"><div class="empty-text">No purchases yet</div></div>';
 
   // Offers
   const offersEl = document.getElementById("offersList");
