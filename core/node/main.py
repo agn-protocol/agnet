@@ -631,6 +631,124 @@ async def get_burns():
     burns = sorted(agp2_burns.values(), key=lambda x: x["time"], reverse=True)
     return {"burns": burns, "count": len(burns)}
 
+
+@app.get("/agp2/demand", summary="AGP-2 aggregated market demand")
+async def get_demand():
+    """What services are being requested — helps sellers decide what to offer."""
+    from collections import defaultdict
+    service_stats = defaultdict(lambda: {"requests_total": 0, "open": 0, "completed": 0, "total_paid_nagn": 0})
+    for r in agp2_requests.values():
+        svc = r.get("service", "unknown")
+        service_stats[svc]["requests_total"] += 1
+        if r.get("status") == "open":
+            service_stats[svc]["open"] += 1
+        if r.get("status") in ("delivered", "closed"):
+            service_stats[svc]["completed"] += 1
+        service_stats[svc]["total_paid_nagn"] += r.get("pay_nagn", 0)
+    demand = []
+    for svc, stats in service_stats.items():
+        avg_pay = stats["total_paid_nagn"] / stats["requests_total"] if stats["requests_total"] else 0
+        has_offer = any(o.get("service") == svc for o in agp2_offers.values())
+        demand.append({
+            "service": svc,
+            "requests_total": stats["requests_total"],
+            "open_now": stats["open"],
+            "completed": stats["completed"],
+            "avg_pay_nagn": int(avg_pay),
+            "avg_pay_agn": round(avg_pay / 1_000_000, 6),
+            "has_offer": has_offer,
+            "opportunity": stats["open"] > 0 and not has_offer,
+        })
+    demand.sort(key=lambda x: x["requests_total"], reverse=True)
+    unsatisfied = [d for d in demand if d["opportunity"]]
+    return {
+        "demand": demand,
+        "unsatisfied": unsatisfied,
+        "tip": "Fields with opportunity=true have open requests but no active seller — first to offer wins.",
+    }
+
+
+@app.get("/agent/{address}/activity", summary="Full agent activity dashboard")
+async def get_agent_activity(address: str):
+    """Complete activity feed for one agent address — balance, deals, timeline."""
+    balance_nagn = dag.get_balance(address)
+    # transactions
+    p = "%s" if os.environ.get("DATABASE_URL") else "?"
+    conn = dag._get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, sender, receiver, amount, timestamp, memo FROM transactions "
+        f"WHERE sender={p} OR receiver={p} ORDER BY timestamp DESC LIMIT 200",
+        (address, address)
+    )
+    rows = cur.fetchall()
+    conn.close()
+    keys = ["id", "sender", "receiver", "amount", "timestamp", "memo"]
+    txs = []
+    for row in rows:
+        r = dict(zip(keys, row)) if os.environ.get("DATABASE_URL") else dict(row)
+        txs.append({
+            "tx_id": r["id"],
+            "direction": "out" if r["sender"] == address else "in",
+            "counterpart": r["receiver"] if r["sender"] == address else r["sender"],
+            "amount_agn": r["amount"] / 1_000_000,
+            "timestamp": r["timestamp"],
+            "memo": r["memo"] or "",
+        })
+    # deals as seller
+    as_seller = []
+    for req_id, req in agp2_requests.items():
+        if req.get("seller") == address:
+            as_seller.append({
+                "req_id": req_id,
+                "role": "seller",
+                "service": req.get("service"),
+                "buyer": req.get("buyer"),
+                "pay_agn": req.get("pay_nagn", 0) / 1_000_000,
+                "status": req.get("status"),
+                "accepted_at": req.get("accepted_at"),
+                "delivered_at": req.get("delivered_at"),
+            })
+    # deals as buyer
+    as_buyer = []
+    for req_id, req in agp2_requests.items():
+        if req.get("buyer") == address:
+            as_buyer.append({
+                "req_id": req_id,
+                "role": "buyer",
+                "service": req.get("service"),
+                "seller": req.get("seller"),
+                "pay_agn": req.get("pay_nagn", 0) / 1_000_000,
+                "status": req.get("status"),
+                "source": req.get("source"),
+                "sym": req.get("sym"),
+                "posted_at": req.get("posted_at"),
+            })
+    # burns involving this address
+    my_burns = [b for b in agp2_burns.values() if b.get("seller") == address]
+    # offers
+    my_offers = [o for o in agp2_offers.values() if o.get("seller") == address]
+    # ratings
+    rating = agp2_ratings.get(address, {"count": 0, "avg": None})
+    # earned / spent
+    earned_nagn = sum(r["amount"] for r in txs if r["direction"] == "in")
+    spent_nagn  = sum(r["amount_agn"] for r in txs if r["direction"] == "out")
+    return {
+        "address": address,
+        "balance_agn": balance_nagn / 1_000_000,
+        "balance_nagn": balance_nagn,
+        "earned_agn": earned_nagn / 1_000_000,
+        "spent_agn": spent_nagn,
+        "deals_as_seller": as_seller,
+        "deals_as_buyer": as_buyer,
+        "deals_seller_count": len(as_seller),
+        "deals_buyer_count": len(as_buyer),
+        "burns": my_burns,
+        "active_offers": my_offers,
+        "rating": rating,
+        "transactions": txs,
+    }
+
 class TxSubmit(BaseModel):
     tx_json: str  # serialized Transaction
 
