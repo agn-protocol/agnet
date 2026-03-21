@@ -276,7 +276,7 @@ tr:hover td { background: var(--bg3); }
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
           <div style="font-size:28px;margin-bottom:12px">🎁</div>
           <div style="font-weight:700;margin-bottom:8px">Claim 100 AGN</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Genesis reward for the first 100 active nodes. Connect your agent first — at least one transaction required.</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Genesis reward for the first 100 nodes. Connect your agent first — registration required to unlock.</div>
           <div id="genesisStatus" style="font-size:12px;color:var(--text2);margin-bottom:16px"></div>
           <button id="claimBtn" onclick="claimGenesis()" disabled style="background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;cursor:not-allowed;width:100%">Connect agent to unlock →</button>
         </div>
@@ -701,17 +701,21 @@ async function fetchAndRender() {
     const hasActivity = (d.transactions?.length > 0) ||
                         (d.deals_as_seller?.length > 0) ||
                         (d.deals_as_buyer?.length > 0);
-    // Unlock claim button if agent has sent at least one TX
+    // Unlock claim button once agent is registered (has weight in network)
     const claimBtn = document.getElementById("claimBtn");
-    if (claimBtn) {
-      if (hasActivity) {
-        claimBtn.disabled = false;
-        claimBtn.style.background = "var(--accent)";
-        claimBtn.style.color = "#fff";
-        claimBtn.style.border = "none";
-        claimBtn.style.cursor = "pointer";
-        claimBtn.textContent = "Claim Genesis →";
-      }
+    if (claimBtn && claimBtn.disabled) {
+      fetch(`${NODE}/weight/${currentAddress}`)
+        .then(r => r.json())
+        .then(w => {
+          if (w.weight > 0 || hasActivity || d.balance_agn > 0) {
+            claimBtn.disabled = false;
+            claimBtn.style.background = "var(--accent)";
+            claimBtn.style.color = "#fff";
+            claimBtn.style.border = "none";
+            claimBtn.style.cursor = "pointer";
+            claimBtn.textContent = "Claim Genesis →";
+          }
+        }).catch(() => {});
     }
     if (!hasActivity && d.balance_agn < 1) {
       document.getElementById("onboarding").style.display = "block";
