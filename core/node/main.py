@@ -560,7 +560,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Agnet Protocol Node",
     version="1.0.0",
-    description="""Autonomous Payment Network for AI Agents\n\n[Explorer & Wallet](https://agn-protocol.github.io/agnet/explorer/) | [GitHub](https://github.com/agn-protocol/agnet) | [Whitepaper](https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf)\n\n**Network:** 0 fee | DAG | AGP-1 | Genesis open""",
+    description="""Autonomous Payment Network for AI Agents\n\n[Explorer & Wallet](https://agn-protocol.github.io/agnet/explorer/) | [GitHub](https://github.com/agn-protocol/agnet) | [Whitepaper](https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md)\n\n**Network:** 0 fee | DAG | AGP-1 | Genesis open""",
     lifespan=lifespan,
 )
 
@@ -853,7 +853,7 @@ def network_overview():
             "explorer": "https://agn-protocol.github.io/agnet/explorer/",
             "api_docs": "https://agnet-production-1bfa.up.railway.app/docs",
             "github": "https://github.com/agn-protocol/agnet",
-            "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf",
+            "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md",
         },
     }
 
@@ -917,7 +917,7 @@ def agnet_json():
         "standards": ["AGP-1", "AGP-2"],
         "launch_date": "2026-03-17T17:00:00Z",
         "repository": "https://github.com/agn-protocol/agnet",
-        "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/Whitepaper.pdf",
+        "whitepaper": "https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md",
         "token": {"symbol": "AGN", "total_supply": 1_000_000_000, "fee": 0},
         "genesis": {"open": s["genesis_open"], "claimed": cl, "remaining": 100 - cl, "reward_agn": 100},
         "endpoints": {
