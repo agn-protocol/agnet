@@ -667,37 +667,27 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const urlAddr = params.get("address");
   const savedAddr = localStorage.getItem("agnet_address");
-  const savedHash = localStorage.getItem("agnet_password_hash");
 
-  // Determine address to show
-  let addr = urlAddr || savedAddr;
+  const addr = urlAddr || savedAddr;
   if (!addr) {
-    // No address at all — redirect to main site to connect
     window.location.href = "https://agn-protocol.github.io/agnet/";
     return;
   }
 
-  // If address from URL but no saved session — ask password
-  if (urlAddr && urlAddr === savedAddr && savedHash) {
-    // known device — already authenticated, proceed
-    currentAddress = addr;
-  } else if (urlAddr && (!savedAddr || urlAddr !== savedAddr)) {
-    // New device or different address — accept as-is (came from connect flow)
-    currentAddress = addr;
-    // save if not saved
-    if (!savedAddr) localStorage.setItem("agnet_address", addr);
-  } else {
-    currentAddress = savedAddr;
+  // Save address from URL if not already saved
+  if (urlAddr && urlAddr !== savedAddr) {
+    localStorage.setItem("agnet_address", urlAddr);
   }
 
-  // Show address in header
+  currentAddress = addr;
+
   const short = currentAddress.slice(0, 14) + "..." + currentAddress.slice(-6);
   document.getElementById("headerAddr").textContent = short;
 
-  // Load
   document.getElementById("dashContent").style.display = "block";
   await fetchAndRender();
   loadGenesisStatus();
+  if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(fetchAndRender, 5000);
 }
 
@@ -726,6 +716,14 @@ async function fetchAndRender() {
 }
 
 init();
+
+// Re-init when user navigates back (bfcache restore)
+window.addEventListener("pageshow", function(e) {
+  if (e.persisted) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    init();
+  }
+});
 
 function showConnectGuide() {
   const el = document.getElementById("addrInCode");
