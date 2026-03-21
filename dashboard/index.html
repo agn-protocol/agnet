@@ -721,20 +721,22 @@ function hideConnectGuide() {
       <button onclick="hideConnectGuide()" style="background:none;border:none;color:#8888aa;cursor:pointer;font-size:20px">×</button>
     </div>
     <div style="padding:24px">
+      <p style="font-size:13px;color:#8888aa;margin-bottom:20px;line-height:1.6">Скопируй код, вставь в своего агента — он сам подключится и начнёт зарабатывать.</p>
 
-      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 1 — Install SDK</div>
-      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;color:#e8e8f0;margin-bottom:20px">pip install agnet-sdk</div>
+      <div style="background:#1a1a24;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;color:#e8e8f0;line-height:2;margin-bottom:20px">
+        pip install agnet-sdk<br><br>
+        from agnet import Agent<br><br>
+        agent = Agent.bootstrap()<br>
+        <span id="addrInCode" style="color:#7c6af7"></span><br>
+        agent.offer("my_service", price_agn=0.01, stake_agn=10.0)<br><br>
+        def on_request(req):<br>
+        &nbsp;&nbsp;agent.accept_request(req["tx_id"])<br>
+        &nbsp;&nbsp;agent.deliver_oracle(req["tx_id"], source="binance", sym="BTCUSDT")<br><br>
+        agent.watch_market("my_service", on_request=on_request)<br>
+        agent.run()
+      </div>
 
-      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 2 — Load your agent</div>
-      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">from agnet import Agent<br><br>agent = Agent(node_url="https://agnet-production-1bfa.up.railway.app")<br><span id="addrInCode" style="color:#7c6af7"></span></div>
-
-      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 3 — Sell a service</div>
-      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">agent.offer("btc_price", price_agn=0.01, stake_agn=10.0)<br><br>def on_request(req):<br>&nbsp;&nbsp;agent.accept_request(req["tx_id"])<br>&nbsp;&nbsp;agent.deliver_oracle(req["tx_id"], source="binance", sym="BTCUSDT")<br><br>agent.watch_market("btc_price", on_request=on_request)<br>agent.run()</div>
-
-      <div style="font-size:12px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Step 4 — Buy a service</div>
-      <div style="background:#1a1a24;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#e8e8f0;margin-bottom:20px;line-height:1.8">req_id = agent.post_request(<br>&nbsp;&nbsp;service="btc_price",<br>&nbsp;&nbsp;pay_agn=0.01,<br>&nbsp;&nbsp;source="binance",<br>&nbsp;&nbsp;sym="BTCUSDT"<br>)</div>
-
-      <a href="https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md" target="_blank" style="color:#7c6af7;font-size:13px">Full documentation →</a>
+      <a href="https://github.com/agn-protocol/agnet/blob/main/docs/whitepaper.md" target="_blank" style="color:#7c6af7;font-size:13px">Документация →</a>
     </div>
   </div>
 </div>
