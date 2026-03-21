@@ -117,13 +117,29 @@ async def epoch_loop():
         if epoch < 0:
             continue
 
-        # Collect validator stats from DAG
-        # (simplified — real implementation tracks per-epoch confirmations)
-        validator_stats = {}
+        # Build validator_stats: weight of each staked participant
+        try:
+            from core.contracts.staking import get_conn as sget_conn, DATABASE_URL as SDBU
+            conn = sget_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT address FROM stakes")
+            rows = cur.fetchall()
+            conn.close()
+            validator_stats = {}
+            for row in rows:
+                addr = row[0] if SDBU else row["address"]
+                w = staking.weight(addr)
+                if w > 0:
+                    validator_stats[addr] = w
+        except Exception as e:
+            print(f"[epoch_loop] stats error: {e}", flush=True)
+            validator_stats = {}
+
         distributions = distribution.distribute_epoch(epoch, validator_stats)
 
         for address, amount in distributions.items():
             dag.credit(address, amount)
+            print(f"[epoch_loop] epoch={epoch} reward={amount} → {address}", flush=True)
 
 
 async def bootstrap_peers():
