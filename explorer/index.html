@@ -59,6 +59,21 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
 .node-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .node-url{font-size:12px;color:#38bdf8}
 .node-badge{font-size:10px;background:#1e3a5f;color:#60a5fa;padding:2px 8px;border-radius:4px}
+.offer-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.offer-svc{font-size:12px;color:#38bdf8;font-weight:600}
+.offer-addr{font-size:10px;color:#475569;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.offer-price{text-align:right;white-space:nowrap}
+.offer-price b{font-size:13px;color:#22c55e;display:block}
+.offer-price small{font-size:10px;color:#475569}
+.agent-item{background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.agent-rank{font-size:18px;font-weight:700;color:#334155;min-width:28px}
+.agent-info{flex:1;overflow:hidden}
+.agent-addr{font-size:11px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-stats{font-size:10px;color:#64748b;margin-top:2px}
+.agent-score{font-size:14px;font-weight:700;color:#22c55e;white-space:nowrap}
+.score-na{color:#334155}
+.market-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.market-grid{grid-template-columns:1fr}}
 </style>
 <style>
 @media (max-width: 768px) {
@@ -105,6 +120,7 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
 </div>
 <div class="tabs">
   <div class="tab active" onclick="showTab('explorer')">Explorer</div>
+  <div class="tab" onclick="showTab('market')">Market</div>
   <div class="tab" onclick="showTab('nodes')">Nodes</div>
   <div class="tab" onclick="showTab('wallet')">Wallet</div>
   <div class="tab" onclick="showTab('connect')">Connect</div>
@@ -114,6 +130,20 @@ header{background:#0f172a;border-bottom:1px solid #1e293b;padding:16px 24px;disp
 <!-- Explorer -->
 <div class="panel active" id="panel-explorer">
   <div id="tx-list"><div class="empty">Loading transactions...</div></div>
+</div>
+
+<!-- Market -->
+<div class="panel" id="panel-market">
+  <div class="market-grid">
+    <div>
+      <div class="card-title" style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Active Offers</div>
+      <div id="market-offers"><div class="empty">Loading...</div></div>
+    </div>
+    <div>
+      <div class="card-title" style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Top Agents</div>
+      <div id="market-agents"><div class="empty">Loading...</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- Nodes -->
@@ -293,11 +323,55 @@ async function checkBal() {
   }
 }
 
+async function loadMarket() {
+  try {
+    const d = await fetch(NODE+"/agp2/market").then(r=>r.json());
+
+    const offersEl = document.getElementById("market-offers");
+    if(!d.offers || d.offers.length === 0) {
+      offersEl.innerHTML = '<div class="empty">No offers yet</div>';
+    } else {
+      offersEl.innerHTML = d.offers.map(o => `
+        <div class="offer-item">
+          <div style="overflow:hidden">
+            <div class="offer-svc">${o.service}</div>
+            <div class="offer-addr">${o.address}</div>
+          </div>
+          <div class="offer-price">
+            <b>${(o.price_nagn/1000000).toFixed(4)} AGN</b>
+            <small>stake: ${(o.stake_nagn/1000000).toFixed(0)} AGN</small>
+          </div>
+        </div>`).join("");
+    }
+
+    const agentsEl = document.getElementById("market-agents");
+    const agents = d.top_agents || [];
+    if(agents.length === 0) {
+      agentsEl.innerHTML = '<div class="empty">No ratings yet</div>';
+    } else {
+      agentsEl.innerHTML = agents.map((a,i) => {
+        const total = a.ok + a.fail;
+        const score = total > 0 ? Math.round(a.ok/total*100) : null;
+        return `
+        <div class="agent-item">
+          <div class="agent-rank">#${i+1}</div>
+          <div class="agent-info">
+            <div class="agent-addr">${a.address}</div>
+            <div class="agent-stats">${a.ok} ok · ${a.fail} fail · ${total} total</div>
+          </div>
+          <div class="agent-score ${score===null?'score-na':''}">${score!==null?score+'%':'—'}</div>
+        </div>`;
+      }).join("");
+    }
+  } catch(e) {}
+}
+
 function showTab(name) {
-  const names = ["explorer","nodes","wallet","connect","economy"];
+  const names = ["explorer","market","nodes","wallet","connect","economy"];
   document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", names[i]===name));
   document.querySelectorAll(".panel").forEach((p,i) => p.classList.toggle("active", names[i]===name));
   if(name==="nodes") loadNodes();
+  if(name==="market") loadMarket();
 }
 
 function copyCode(btn) {
