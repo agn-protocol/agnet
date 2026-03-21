@@ -167,8 +167,44 @@ async def bootstrap_peers():
                 print(f"Bootstrap error: {e}", flush=True)
 
 
+def _restore_agp2_state():
+    """Rebuild AGP-2 in-memory state from all stored transactions on startup."""
+    try:
+        from core.node.dag import get_conn, PLACEHOLDER
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT sender, memo, timestamp, id FROM transactions "
+            f"WHERE memo LIKE {PLACEHOLDER} OR memo LIKE {PLACEHOLDER} OR memo LIKE {PLACEHOLDER} "
+            f"ORDER BY timestamp ASC",
+            ("offer|%", "request|%", "rating|%")
+        )
+        rows = cur.fetchall()
+        conn.close()
+
+        class _TX:
+            def __init__(self, sender, memo, timestamp, tx_id):
+                self.sender = sender
+                self.memo = memo
+                self.timestamp = timestamp
+                self.id = tx_id
+
+        from core.node.dag import DATABASE_URL
+        for row in rows:
+            if DATABASE_URL:
+                tx = _TX(row[0], row[1], row[2], row[3])
+            else:
+                tx = _TX(row["sender"], row["memo"], row["timestamp"], row["id"])
+            _parse_agp2_memo(tx)
+
+        print(f"[AGP-2] Restored: {len(agp2_offers)} offers, {len(agp2_requests)} requests, {len(agp2_ratings)} ratings", flush=True)
+    except Exception as e:
+        print(f"[AGP-2] Restore error: {e}", flush=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _restore_agp2_state()
     asyncio.create_task(bootstrap_peers())
     asyncio.create_task(epoch_loop())
     yield

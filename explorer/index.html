@@ -283,8 +283,8 @@ async function loadStats() {
     document.getElementById("s-dist").textContent = (s.distribution.total_distributed_nagn/1000000).toFixed(2);
     document.getElementById("s-gen").textContent = g.claimed;
     document.getElementById("g-rem").textContent = g.remaining;
-    document.getElementById("gen-slots").textContent = g.remaining;
-    document.getElementById("slots-left").textContent = g.remaining;
+    const genSlots = document.getElementById("gen-slots"); if(genSlots) genSlots.textContent = g.remaining;
+    const slotsLeft = document.getElementById("slots-left"); if(slotsLeft) slotsLeft.textContent = g.remaining;
     document.getElementById("gen-tag").textContent = g.remaining + " slots remaining";
   } catch(e) {
     document.querySelector(".live").style.color="#ef4444";
@@ -349,6 +349,11 @@ async function checkBal() {
   }
 }
 
+function shortAddr(addr) {
+  if (!addr) return '';
+  return addr.length > 20 ? addr.slice(0,10)+'…'+addr.slice(-6) : addr;
+}
+
 async function loadMarket() {
   try {
     const d = await fetch(NODE+"/agp2/market").then(r=>r.json());
@@ -359,9 +364,9 @@ async function loadMarket() {
     } else {
       offersEl.innerHTML = d.offers.map(o => `
         <div class="offer-item">
-          <div style="overflow:hidden;min-width:0;flex:1">
+          <div style="min-width:0;flex:1">
             <div class="offer-svc">${o.service}</div>
-            <div class="offer-addr">${o.address}</div>
+            <div class="offer-addr">${shortAddr(o.address)}</div>
           </div>
           <div class="offer-price">
             <b>${(o.price_nagn/1000000).toFixed(4)} AGN</b>
@@ -382,7 +387,7 @@ async function loadMarket() {
         <div class="agent-item">
           <div class="agent-rank">#${i+1}</div>
           <div class="agent-info">
-            <div class="agent-addr">${a.address}</div>
+            <div class="agent-addr">${shortAddr(a.address)}</div>
             <div class="agent-stats">${a.ok} ok · ${a.fail} fail · ${total} total</div>
           </div>
           <div class="agent-score ${score===null?'score-na':''}">${score!==null?score+'%':'—'}</div>
