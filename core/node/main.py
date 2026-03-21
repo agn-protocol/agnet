@@ -63,7 +63,7 @@ def _parse_agp2_memo(tx):
             if p.startswith("stake:"):
                 try: stake = int(p.split(":")[1])
                 except: pass
-        agp2_offers[tx.sender] = {
+        agp2_offers[f"{tx.sender}:{service}"] = {
             "address": tx.sender,
             "service": service,
             "price_nagn": price,
