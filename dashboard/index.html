@@ -406,35 +406,17 @@ function statusBadge(s) {
   return `<span class="status ${s}">${s}</span>`;
 }
 
-async function loadDashboard() {
-  const addr = document.getElementById("addrInput").value.trim();
-  if (!addr) return;
-  currentAddress = addr;
-  document.getElementById("noAddr").style.display = "none";
-  document.getElementById("dashContent").style.display = "block";
-  await fetchAndRender();
-  if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(fetchAndRender, 5000);
-}
-
 async function loadDemo() {
   try {
-    const r = await fetch(NODE + "/txs?limit=5");
-    const data = await r.json();
-    const txs = data.txs || [];
-    if (txs.length > 0) {
-      const addr = txs[0].sender_full || txs[0].id_full?.slice(0,20);
-      // try to get a real address from balance
-      const r2 = await fetch(NODE + "/agp2/market");
-      const market = await r2.json();
-      const agents = market.top_agents || [];
-      if (agents.length > 0) {
-        document.getElementById("addrInput").value = agents[0].address;
-        loadDashboard();
-        return;
-      }
+    const r2 = await fetch(NODE + "/agp2/market");
+    const market = await r2.json();
+    const agents = market.top_agents || [];
+    if (agents.length > 0) {
+      currentAddress = agents[0].address;
+      await fetchAndRender();
+      return;
     }
-    alert("No agents found yet. Enter your address manually.");
+    alert("No agents found yet.");
   } catch(e) {
     alert("Could not load demo data.");
   }
