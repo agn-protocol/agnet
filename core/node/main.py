@@ -107,43 +107,6 @@ def _parse_agp2_memo(tx):
             agp2_ratings[tx.sender]["fail"] += 1
 
 
-@app.get("/offers", summary="AGP-2 active offers")
-async def get_offers():
-    """List all agent service offers."""
-    return {"offers": list(agp2_offers.values()), "count": len(agp2_offers)}
-
-
-@app.get("/requests", summary="AGP-2 active requests")
-async def get_requests():
-    """List all pending buy requests."""
-    return {"requests": list(agp2_requests.values()), "count": len(agp2_requests)}
-
-
-@app.get("/ratings/{address}", summary="AGP-2 agent reputation")
-async def get_ratings(address: str):
-    """Get agent reputation from rating transactions."""
-    r = agp2_ratings.get(address, {"ok": 0, "fail": 0, "address": address})
-    total = r["ok"] + r["fail"]
-    score = round(r["ok"] / total * 100, 1) if total > 0 else None
-    return {**r, "total": total, "score_pct": score}
-
-
-@app.get("/agp2/market", summary="AGP-2 market overview")
-async def get_agp2_market():
-    """Full AGP-2 market state: offers, requests, top agents."""
-    top = sorted(agp2_ratings.values(), key=lambda x: x["ok"], reverse=True)[:10]
-    return {
-        "offers": list(agp2_offers.values()),
-        "requests": list(agp2_requests.values()),
-        "top_agents": top,
-        "stats": {
-            "total_offers": len(agp2_offers),
-            "total_requests": len(agp2_requests),
-            "total_rated_agents": len(agp2_ratings)
-        }
-    }
-
-
 # ─── Background tasks ─────────────────────────────────────────────────────────
 
 async def epoch_loop():
@@ -229,6 +192,44 @@ app.add_middleware(
 
 
 # ─── Request / Response models ────────────────────────────────────────────────
+
+# ─── AGP-2 routes (defined after app) ─────────────────────────────────────────
+
+@app.get("/offers", summary="AGP-2 active offers")
+async def get_offers():
+    """List all agent service offers."""
+    return {"offers": list(agp2_offers.values()), "count": len(agp2_offers)}
+
+
+@app.get("/requests", summary="AGP-2 active requests")
+async def get_requests():
+    """List all pending buy requests."""
+    return {"requests": list(agp2_requests.values()), "count": len(agp2_requests)}
+
+
+@app.get("/ratings/{address}", summary="AGP-2 agent reputation")
+async def get_ratings(address: str):
+    """Get agent reputation from rating transactions."""
+    r = agp2_ratings.get(address, {"ok": 0, "fail": 0, "address": address})
+    total = r["ok"] + r["fail"]
+    score = round(r["ok"] / total * 100, 1) if total > 0 else None
+    return {**r, "total": total, "score_pct": score}
+
+
+@app.get("/agp2/market", summary="AGP-2 market overview")
+async def get_agp2_market():
+    """Full AGP-2 market state: offers, requests, top agents."""
+    top = sorted(agp2_ratings.values(), key=lambda x: x["ok"], reverse=True)[:10]
+    return {
+        "offers": list(agp2_offers.values()),
+        "requests": list(agp2_requests.values()),
+        "top_agents": top,
+        "stats": {
+            "total_offers": len(agp2_offers),
+            "total_requests": len(agp2_requests),
+            "total_rated_agents": len(agp2_ratings)
+        }
+    }
 
 class TxSubmit(BaseModel):
     tx_json: str  # serialized Transaction
