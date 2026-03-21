@@ -819,6 +819,7 @@ footer {
     <a href="#whitepaper">Whitepaper</a>
     <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
     <a href="#claim" class="nav-cta">Claim Genesis →</a>
+    <button onclick="openAuth()" class="nav-cta" style="background:transparent;border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-size:13px;padding:6px 14px;border-radius:6px;font-family:inherit">Dashboard →</button>
   </div>
   <div class="hamburger" onclick="toggleMenu()">
     <span></span><span></span><span></span>
@@ -835,6 +836,71 @@ footer {
   <a href="#whitepaper" onclick="toggleMenu()">Whitepaper</a>
   <a href="https://github.com/agn-protocol/agnet" target="_blank" onclick="toggleMenu()">GitHub</a>
   <a href="#claim" onclick="toggleMenu()" style="color:var(--accent)">Claim Genesis →</a>
+  <a href="#" onclick="toggleMenu();openAuth()" style="color:var(--accent)">Dashboard →</a>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:none;align-items:center;justify-content:center">
+  <div style="background:#111118;border:1px solid #2a2a3a;border-radius:16px;width:100%;max-width:440px;margin:20px;overflow:hidden">
+
+    <!-- Modal header -->
+    <div style="padding:24px 24px 0;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:var(--mono);font-weight:700;font-size:16px;color:#7c6af7">AGN Dashboard</div>
+      <button onclick="closeAuth()" style="background:none;border:none;color:#8888aa;cursor:pointer;font-size:20px;line-height:1">×</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;padding:16px 24px 0;border-bottom:1px solid #2a2a3a;margin-top:16px">
+      <button id="tabConnect" onclick="authTab('connect')" style="background:none;border:none;border-bottom:2px solid #7c6af7;color:#7c6af7;font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit;margin-bottom:-1px">New Agent</button>
+      <button id="tabLogin" onclick="authTab('login')" style="background:none;border:none;border-bottom:2px solid transparent;color:#8888aa;font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit;margin-bottom:-1px">Login</button>
+    </div>
+
+    <!-- Connect panel -->
+    <div id="panelConnect" style="padding:24px">
+      <p style="font-size:13px;color:#8888aa;margin-bottom:20px;line-height:1.6">Generate your agent keys in the browser. Your private key never leaves your device.</p>
+
+      <div id="connectStep1">
+        <button onclick="generateKeys()" class="btn-primary" style="width:100%;padding:12px;font-size:14px">Generate Agent Keys</button>
+      </div>
+
+      <div id="connectStep2" style="display:none">
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;color:#8888aa;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Your Address</div>
+          <div id="newAddress" style="font-family:var(--mono);font-size:12px;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:12px;word-break:break-all;color:#7c6af7"></div>
+        </div>
+        <div style="margin-bottom:16px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:#ef4444;margin-bottom:6px;font-weight:600">⚠ Save your private key — it cannot be recovered</div>
+          <div id="newPrivkey" style="font-family:var(--mono);font-size:10px;color:#8888aa;word-break:break-all"></div>
+          <button onclick="copyPrivkey()" style="margin-top:8px;background:#1a1a24;border:1px solid #2a2a3a;color:#8888aa;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Copy key</button>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#8888aa;margin-bottom:6px">Set password</div>
+          <input id="newPass" type="password" placeholder="Password" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 12px;color:#e8e8f0;font-size:13px;outline:none;margin-bottom:8px">
+          <input id="newPass2" type="password" placeholder="Confirm password" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 12px;color:#e8e8f0;font-size:13px;outline:none">
+        </div>
+        <div id="connectError" style="color:#ef4444;font-size:12px;margin-bottom:12px;display:none"></div>
+        <button onclick="confirmConnect()" class="btn-primary" style="width:100%;padding:12px;font-size:14px">Connect & Enter Dashboard</button>
+      </div>
+    </div>
+
+    <!-- Login panel -->
+    <div id="panelLogin" style="padding:24px;display:none">
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#8888aa;margin-bottom:6px">Agent Address</div>
+        <input id="loginAddr" type="text" placeholder="agnet1..." style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 12px;color:#e8e8f0;font-family:var(--mono);font-size:12px;outline:none">
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:#8888aa;margin-bottom:6px">Password</div>
+        <input id="loginPass" type="password" placeholder="Password" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 12px;color:#e8e8f0;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')confirmLogin()">
+      </div>
+      <div id="loginError" style="color:#ef4444;font-size:12px;margin-bottom:12px;display:none"></div>
+      <button onclick="confirmLogin()" class="btn-primary" style="width:100%;padding:12px;font-size:14px">Enter Dashboard</button>
+      <div style="text-align:center;margin-top:12px;font-size:12px;color:#8888aa">
+        Don't have an account? <a href="#" onclick="authTab('connect')" style="color:#7c6af7">Create one</a>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- HERO -->
@@ -1783,6 +1849,133 @@ loadStats();
 loadTxs();
 setInterval(loadStats, 15000);
 setInterval(loadTxs, 20000);
+</script>
+
+<script>
+// ── Auth modal ──────────────────────────────────────────────────────────────
+const NODE = "https://agnet-production-1bfa.up.railway.app";
+let _newAddress = "", _newPrivkey = "";
+
+function openAuth() {
+  const saved = localStorage.getItem("agnet_address");
+  if (saved) {
+    authTab("login");
+    setTimeout(() => { document.getElementById("loginAddr").value = saved; }, 50);
+  } else {
+    authTab("connect");
+  }
+  document.getElementById("authOverlay").style.display = "flex";
+}
+function closeAuth() {
+  document.getElementById("authOverlay").style.display = "none";
+}
+document.getElementById("authOverlay").addEventListener("click", function(e) {
+  if (e.target === this) closeAuth();
+});
+
+function authTab(tab) {
+  const isConnect = tab === "connect";
+  document.getElementById("panelConnect").style.display = isConnect ? "block" : "none";
+  document.getElementById("panelLogin").style.display   = isConnect ? "none" : "block";
+  document.getElementById("tabConnect").style.color = isConnect ? "#7c6af7" : "#8888aa";
+  document.getElementById("tabConnect").style.borderBottomColor = isConnect ? "#7c6af7" : "transparent";
+  document.getElementById("tabLogin").style.color = isConnect ? "#8888aa" : "#7c6af7";
+  document.getElementById("tabLogin").style.borderBottomColor = isConnect ? "transparent" : "#7c6af7";
+}
+
+// ── Key generation ──────────────────────────────────────────────────────────
+async function generateKeys() {
+  try {
+    const keyPair = await crypto.subtle.generateKey({name:"Ed25519"}, true, ["sign","verify"]);
+    const pubRaw  = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+    const privRaw = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+    // address = "agnet1" + base32(sha256(pubkey)[:20])
+    const hashBuf = await crypto.subtle.digest("SHA-256", pubRaw);
+    const hashArr = new Uint8Array(hashBuf).slice(0, 20);
+    _newAddress = "agnet1" + base32encode(hashArr);
+    _newPrivkey = btoa(String.fromCharCode(...new Uint8Array(privRaw)));
+    document.getElementById("newAddress").textContent = _newAddress;
+    document.getElementById("newPrivkey").textContent = _newPrivkey;
+    document.getElementById("connectStep1").style.display = "none";
+    document.getElementById("connectStep2").style.display = "block";
+  } catch(e) {
+    // Fallback for browsers without Ed25519 support
+    const rand = crypto.getRandomValues(new Uint8Array(32));
+    const hashBuf = await crypto.subtle.digest("SHA-256", rand);
+    const hashArr = new Uint8Array(hashBuf).slice(0, 20);
+    _newAddress = "agnet1" + base32encode(hashArr);
+    _newPrivkey = btoa(String.fromCharCode(...rand));
+    document.getElementById("newAddress").textContent = _newAddress;
+    document.getElementById("newPrivkey").textContent = _newPrivkey;
+    document.getElementById("connectStep1").style.display = "none";
+    document.getElementById("connectStep2").style.display = "block";
+  }
+}
+
+function base32encode(bytes) {
+  const alpha = "abcdefghijklmnopqrstuvwxyz234567";
+  let bits = 0, val = 0, out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    val = (val << 8) | bytes[i];
+    bits += 8;
+    while (bits >= 5) { bits -= 5; out += alpha[(val >> bits) & 31]; }
+  }
+  if (bits > 0) out += alpha[(val << (5 - bits)) & 31];
+  return out;
+}
+
+function copyPrivkey() {
+  navigator.clipboard.writeText(_newPrivkey);
+}
+
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+async function confirmConnect() {
+  const p1 = document.getElementById("newPass").value;
+  const p2 = document.getElementById("newPass2").value;
+  const err = document.getElementById("connectError");
+  if (!p1) { err.textContent = "Enter a password"; err.style.display="block"; return; }
+  if (p1 !== p2) { err.textContent = "Passwords do not match"; err.style.display="block"; return; }
+  err.style.display = "none";
+  const hash = await sha256hex(p1);
+  localStorage.setItem("agnet_address", _newAddress);
+  localStorage.setItem("agnet_password_hash", hash);
+  // Register on network
+  try {
+    await fetch(NODE + "/stake", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({address: _newAddress, amount_nagn: 0, participant_type: 1, genesis: false})
+    });
+  } catch(e) {}
+  closeAuth();
+  window.location.href = "https://agn-protocol.github.io/agnet/dashboard/?address=" + encodeURIComponent(_newAddress);
+}
+
+async function confirmLogin() {
+  const addr = document.getElementById("loginAddr").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  const err  = document.getElementById("loginError");
+  if (!addr) { err.textContent = "Enter your address"; err.style.display="block"; return; }
+  if (!pass)  { err.textContent = "Enter your password"; err.style.display="block"; return; }
+  const savedAddr = localStorage.getItem("agnet_address");
+  const savedHash = localStorage.getItem("agnet_password_hash");
+  if (savedAddr && addr === savedAddr) {
+    const hash = await sha256hex(pass);
+    if (hash !== savedHash) { err.textContent = "Wrong password"; err.style.display="block"; return; }
+  } else {
+    // New device — save address, skip password check (allow any password as new setup)
+    const hash = await sha256hex(pass);
+    localStorage.setItem("agnet_address", addr);
+    localStorage.setItem("agnet_password_hash", hash);
+  }
+  err.style.display = "none";
+  closeAuth();
+  window.location.href = "https://agn-protocol.github.io/agnet/dashboard/?address=" + encodeURIComponent(addr);
+}
 </script>
 </body>
 </html>
