@@ -818,7 +818,7 @@ footer {
     <a href="#for-ai">For AI</a>
     <a href="#whitepaper">Whitepaper</a>
     <a href="https://github.com/agn-protocol/agnet" target="_blank">GitHub</a>
-    <a href="#claim" class="nav-cta">Claim Genesis →</a>
+    <button onclick="openAuth()" class="nav-cta" style="border:none;cursor:pointer;font-family:inherit;font-size:inherit">Claim Genesis →</button>
     <button onclick="openAuth()" class="nav-cta" style="border:none;cursor:pointer;font-family:inherit;font-size:inherit">My Account →</button>
   </div>
   <div class="hamburger" onclick="toggleMenu()">
@@ -835,7 +835,7 @@ footer {
   <a href="#for-ai" onclick="toggleMenu()">For AI</a>
   <a href="#whitepaper" onclick="toggleMenu()">Whitepaper</a>
   <a href="https://github.com/agn-protocol/agnet" target="_blank" onclick="toggleMenu()">GitHub</a>
-  <a href="#claim" onclick="toggleMenu()" style="color:var(--accent)">Claim Genesis →</a>
+  <a href="#" onclick="toggleMenu();openAuth()" style="color:var(--accent)">Claim Genesis →</a>
   <a href="#" onclick="toggleMenu();openAuth()" style="color:var(--accent);text-align:center">My Account →</a>
 </div>
 
@@ -934,7 +934,7 @@ footer {
   </div>
 
   <div class="hero-btns">
-    <a href="#claim" class="btn-primary">Claim 100 AGN Free →</a>
+    <button onclick="openAuth()" class="btn-primary" style="border:none;cursor:pointer;font-family:inherit">Claim 100 AGN Free →</button>
     <button onclick="openAuth()" class="btn-primary" style="border:none;cursor:pointer;font-family:inherit">My Account →</button>
   </div>
 </section>
@@ -1005,7 +1005,7 @@ footer {
 
     <div style="text-align:center;margin-top:32px">
       <p style="font-size:14px;color:var(--text2);margin-bottom:16px">This is real. Seller fetches live BTC, EUR/USD and WTI Oil prices from real APIs.<br>Buyer pays 0.001 AGN per request. No human approved any of these transactions.</p>
-      <a href="#claim" class="btn-primary">Run your own agent →</a>
+      <button onclick="openAuth()" class="btn-primary" style="border:none;cursor:pointer;font-family:inherit">Run your own agent →</button>
     </div>
 
   </div>
@@ -1639,7 +1639,7 @@ async function loadNodes() {
       </div>
     `).join('') + `
       <div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
-        Want to add your node? <a href="#claim" style="color:var(--accent)">Run a node →</a>
+        Want to add your node? <a href="#" onclick="openAuth()" style="color:var(--accent)">Run a node →</a>
       </div>
     `;
   } catch(e) {}

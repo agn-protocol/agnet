@@ -188,6 +188,7 @@ tr:hover td { background: var(--bg3); }
 
   /* Onboarding cards: 1 column */
   #onboarding > div:last-child { grid-template-columns: 1fr !important; }
+  #onboarding { max-width: 100% !important; }
 
   /* Tables → cards on mobile */
   .table-wrap table, .table-wrap thead { display: none; }
@@ -257,37 +258,39 @@ tr:hover td { background: var(--bg3); }
   <div class="main" id="mainContent">
 
     <!-- Onboarding: new user, no activity yet -->
-    <div id="onboarding" style="display:none;max-width:700px">
-      <div style="margin-bottom:32px">
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Welcome</div>
-        <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Your agent is ready</h2>
-        <p style="color:var(--text2);font-size:14px">Your address: <span id="onboardAddr" style="font-family:var(--mono);color:var(--accent)"></span></p>
+    <div id="onboarding" style="display:none;max-width:640px">
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Get started</div>
+        <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Welcome to Agnet</h2>
+        <p style="color:var(--text2);font-size:14px">Address: <span id="onboardAddr" style="font-family:var(--mono);color:var(--accent)"></span></p>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- Connect your agent -->
+        <div style="background:var(--bg2);border:1px solid var(--accent);border-radius:12px;padding:24px">
           <div style="font-size:28px;margin-bottom:12px">⚡</div>
           <div style="font-weight:700;margin-bottom:8px">Connect your agent</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">3 lines of code — your agent joins the network and starts earning</div>
-          <div style="background:var(--bg3);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.8">pip install agnet-sdk</div>
-          <button onclick="showConnectGuide()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;width:100%">How to connect →</button>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+            Connect your agent with 3 lines of code and receive <span style="color:var(--green);font-weight:600">100 AGN</span> genesis reward automatically.
+          </div>
+          <div id="genesisStatus" style="font-size:11px;color:var(--text2);margin-bottom:16px"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--text2);flex-shrink:0" id="agentDot"></div>
+            <span style="font-size:12px;color:var(--text2)" id="agentStatus">Waiting for agent connection...</span>
+          </div>
+          <button onclick="showConnectGuide()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;width:100%;font-weight:600">How to connect →</button>
         </div>
 
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
-          <div style="font-size:28px;margin-bottom:12px">🎁</div>
-          <div style="font-weight:700;margin-bottom:8px">Claim 100 AGN</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Genesis reward for the first 100 nodes. Connect your agent first — registration required to unlock.</div>
-          <div id="genesisStatus" style="font-size:12px;color:var(--text2);margin-bottom:16px"></div>
-          <button id="claimBtn" onclick="claimGenesis()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;width:100%;font-weight:600">Claim 100 AGN →</button>
-        </div>
-
+        <!-- Run a node -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">
           <div style="font-size:28px;margin-bottom:12px">🖥</div>
           <div style="font-weight:700;margin-bottom:8px">Run a node</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Earn epoch rewards every 24h by running your own node</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Earn epoch rewards every 24h by running your own Agnet node.</div>
           <div style="background:var(--bg3);border-radius:8px;padding:10px;font-family:var(--mono);font-size:10px;color:var(--text2);margin-bottom:16px;line-height:1.8">docker run -e AGENT_PRIVATE_KEY=key<br>-p 8000:8000 ghcr.io/agn-protocol/agnet</div>
-          <a href="https://github.com/agn-protocol/agnet" target="_blank" style="color:var(--accent);font-size:13px;text-decoration:none">View on GitHub →</a>
+          <a href="https://github.com/agn-protocol/agnet" target="_blank" style="display:block;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;text-decoration:none;text-align:center">View on GitHub →</a>
         </div>
+
       </div>
     </div>
 
@@ -630,30 +633,6 @@ function logout() {
   window.location.href = "https://agn-protocol.github.io/agnet/";
 }
 
-async function claimGenesis() {
-  if (!currentAddress) return;
-  const btn = document.getElementById("claimBtn");
-  if (btn) { btn.disabled = true; btn.textContent = "Claiming..."; }
-  try {
-    const r = await fetch(NODE + "/stake", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({address: currentAddress, amount_nagn: 0, participant_type: 1, genesis: true})
-    });
-    const d = await r.json();
-    if (d.genesis_reward_agn) {
-      showCongrats(d.genesis_reward_agn);
-      if (btn) { btn.textContent = "Claimed ✓"; }
-      fetchAndRender();
-    } else {
-      alert("Genesis already claimed or all 100 slots are taken.");
-      if (btn) { btn.disabled = false; btn.textContent = "Claim 100 AGN →"; }
-    }
-  } catch(e) {
-    alert("Error: " + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = "Claim 100 AGN →"; }
-  }
-}
 
 function showCongrats(agn) {
   const el = document.createElement("div");
@@ -681,7 +660,9 @@ async function loadGenesisStatus() {
     const r = await fetch(NODE + "/genesis");
     const d = await r.json();
     const el = document.getElementById("genesisStatus");
-    if (el) el.textContent = d.remaining + " slots remaining of 100";
+    if (el) el.textContent = d.open
+      ? d.remaining + " of 100 genesis slots remaining"
+      : "Genesis closed — all 100 slots taken";
   } catch(e) {}
 }
 
@@ -729,11 +710,23 @@ async function fetchAndRender() {
     const hasActivity = (d.transactions?.length > 0) ||
                         (d.deals_as_seller?.length > 0) ||
                         (d.deals_as_buyer?.length > 0);
-    if (!hasActivity && d.balance_agn < 1) {
+    if (!hasActivity) {
+      // Still on onboarding — update status dot
       document.getElementById("onboarding").style.display = "block";
       document.getElementById("onboardAddr").textContent = currentAddress;
       document.getElementById("dashContent").style.display = "none";
       return;
+    }
+    // Agent connected — check if genesis not yet given
+    if (hasActivity && d.balance_agn < 1 && !sessionStorage.getItem("genesis_claimed")) {
+      sessionStorage.setItem("genesis_claimed", "1");
+      fetch(NODE + "/stake", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({address: currentAddress, amount_nagn: 0, participant_type: 1, genesis: true})
+      }).then(r => r.json()).then(resp => {
+        if (resp.genesis_reward_agn) showCongrats(resp.genesis_reward_agn);
+      }).catch(() => {});
     }
     document.getElementById("onboarding").style.display = "none";
     document.getElementById("dashContent").style.display = "block";
